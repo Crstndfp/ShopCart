@@ -92,9 +92,10 @@ erDiagram
         int IDCart PK "Autoincremental primary key"
         int IDUser FK "Authenticated user ID (NULL for guest)"
         varchar GuestToken UK "UUID token for guest visitor cart"
+        varchar Status "Cart status: ACTIVE, CONVERTED, ABANDONED"
         datetime2 CreatedAt "Cart creation timestamp"
         datetime2 LastActivityAt "Timestamp for abandoned cart detection"
-        bit IsActive "Active cart flag"
+        bit IsActive "Active cart flag for filtered unique index"
     }
 
     CART_ITEMS {
@@ -144,6 +145,7 @@ erDiagram
         int IDOrder PK "Autoincremental primary key"
         varchar OrderNumber UK "Human-readable code (e.g. ORD-2026-0001)"
         int IDUser FK "Customer who placed order"
+        int IDCart FK "Originating shopping cart reference"
         int IDDeliveryAddress FK "Delivery address reference"
         nvarchar ShippingAddressSnapshot "Immutable JSON snapshot of delivery address"
         decimal NetSubtotal "Tax base amount (Total - IVA)"
@@ -244,6 +246,7 @@ erDiagram
 
     CARTS ||--o{ CART_ITEMS : "contains"
     CARTS ||--o{ STOCK_RESERVATIONS : "initiates"
+    CARTS ||--o| ORDERS : "converts_to"
 
     ORDERS ||--|{ ORDER_ITEMS : "details"
     ORDERS ||--o{ ORDER_STATUS_HISTORY : "tracks_lifecycle"
