@@ -14,6 +14,10 @@ GO
 USE ShopCartDB;
 GO
 
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- ============================================================================
 -- 1. SYSTEM CONFIGURATION & VALUES CATALOG (Lookup Tables)
 -- ============================================================================

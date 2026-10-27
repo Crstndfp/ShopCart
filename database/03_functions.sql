@@ -8,6 +8,10 @@
 USE ShopCartDB;
 GO
 
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- ============================================================================
 -- 1. FU_Catalog_AvailableStock
 -- Returns physical stock, active unexpired reservations, and available stock
