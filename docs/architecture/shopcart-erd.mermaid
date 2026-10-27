@@ -1,0 +1,256 @@
+erDiagram
+    CONFIGURATIONS {
+        int IDConfiguration PK "Autoincremental identifier"
+        varchar ConfigKey UK "Unique key, e.g. SYSTEM_IVA_PERCENTAGE"
+        nvarchar ConfigValue "Runtime value, e.g. 0.12, 15, 24"
+        varchar DataType "DECIMAL, ENTERO, TEXTO, BOOLEANO, JSON"
+        nvarchar Description "Business description of parameter"
+        bit IsEditable "Whether admin can edit in UI"
+        datetime2 UpdatedAt "Last modification timestamp"
+        int UpdatedByUserID FK "Audit: admin user who updated"
+    }
+
+    VALUES_LOOKUP {
+        int IDValue PK "Autoincremental identifier"
+        varchar ValueCategory "Category: USER_ROLE, ORDER_STATUS, KARDEX_TYPE"
+        varchar Code "Immutable code: CLIENT, PAID, PURCHASE_ENTRY"
+        nvarchar Name "Display name for user interface"
+        nvarchar Description "Domain description and business rules"
+        int DisplayOrder "UI sort order in dropdown lists"
+        bit IsActive "Soft delete flag"
+    }
+
+    USERS {
+        int IDUser PK "Autoincremental primary key"
+        int IDRole FK "References VALUES_LOOKUP"
+        nvarchar FullName "Client, Operator or Administrator name"
+        varchar Email UK "Login email address"
+        varchar PasswordHash "Argon2 / bcrypt password hash"
+        varchar PhoneNumber "Contact phone"
+        bit IsActive "Soft delete: deactivated without deletion"
+        datetime2 CreatedAt "Registration timestamp"
+        datetime2 UpdatedAt "Last profile update timestamp"
+    }
+
+    REFRESH_TOKENS {
+        int IDRefreshToken PK "Autoincremental primary key"
+        int IDUser FK "Owner user identifier"
+        varchar TokenHash UK "SHA-256 hash of refresh token"
+        datetime2 ExpiresAt "Expiration timestamp (e.g. 7 days)"
+        bit IsRevoked "Revocation flag"
+        varchar ReplacedByTokenHash "Token rotation family tracking"
+        datetime2 CreatedAt "Token issuance timestamp"
+    }
+
+    ADDRESSES {
+        int IDAddress PK "Autoincremental primary key"
+        int IDUser FK "Client user identifier"
+        nvarchar Alias "Home, Office, etc."
+        nvarchar RecipientName "Person receiving the delivery"
+        nvarchar AddressLine1 "Street, avenue, building number"
+        nvarchar AddressLine2 "Apartment, suite, interior unit"
+        nvarchar Municipality "Municipality / City"
+        nvarchar Department "Department / State / Province"
+        varchar PostalCode "Postal code"
+        varchar ContactPhone "Delivery contact phone number"
+        bit IsActive "Active / soft delete flag"
+    }
+
+    CATEGORIES {
+        int IDCategory PK "Autoincremental primary key"
+        int IDParentCategory FK "Self-reference for subcategories"
+        nvarchar Name UK "Unique category name"
+        nvarchar Description "Category overview"
+        bit IsActive "Active / visible in store"
+        datetime2 CreatedAt "Creation timestamp"
+    }
+
+    PRODUCTS {
+        int IDProduct PK "Autoincremental primary key"
+        int IDCategory FK "Product main category"
+        nvarchar Name "Commercial product name"
+        nvarchar Description "Full product description"
+        nvarchar MainImageUrl "Primary catalog thumbnail URL"
+        bit IsActive "Soft delete: deactivated if sales exist"
+        datetime2 CreatedAt "Creation timestamp"
+        datetime2 UpdatedAt "Last update timestamp"
+    }
+
+    PRODUCT_VARIANTS {
+        int IDVariant PK "Autoincremental primary key"
+        int IDProduct FK "Parent product identifier"
+        varchar SKU UK "Unique Stock Keeping Unit code"
+        nvarchar AttributesJson "JSON attributes: size, color, material"
+        decimal Price "Selling price in GTQ including 12% IVA"
+        int PhysicalStock "Current on-hand physical inventory"
+        bit IsActive "Variant availability flag"
+        datetime2 CreatedAt "Creation timestamp"
+        datetime2 UpdatedAt "Last modification timestamp"
+    }
+
+    CARTS {
+        int IDCart PK "Autoincremental primary key"
+        int IDUser FK "Authenticated user ID (NULL for guest)"
+        varchar GuestToken UK "UUID token for guest visitor cart"
+        datetime2 CreatedAt "Cart creation timestamp"
+        datetime2 LastActivityAt "Timestamp for abandoned cart detection"
+        bit IsActive "Active cart flag"
+    }
+
+    CART_ITEMS {
+        int IDCartItem PK "Autoincremental primary key"
+        int IDCart FK "Shopping cart identifier"
+        int IDVariant FK "Product variant added"
+        int Quantity "Requested quantity"
+        datetime2 AddedAt "Date and time added"
+    }
+
+    STOCK_RESERVATIONS {
+        int IDReservation PK "Autoincremental primary key"
+        int IDVariant FK "Product variant reserved"
+        int IDCart FK "Cart holding reservation"
+        int Quantity "Reserved units during checkout"
+        datetime2 ReservedAt "Reservation creation timestamp"
+        datetime2 ExpiresAt "Expires after 15 minutes"
+        varchar Status "ACTIVE, COMPLETED, EXPIRED, CANCELLED"
+        int IDOrder FK "Order associated once payment succeeds"
+    }
+
+    COUPONS {
+        int IDCoupon PK "Autoincremental primary key"
+        varchar Code UK "Promotional coupon code"
+        varchar DiscountType "PERCENTAGE or FIXED_AMOUNT"
+        decimal DiscountValue "Percentage rate or fixed amount in GTQ"
+        decimal MinPurchaseAmount "Minimum order total required"
+        datetime2 StartDate "Validity start datetime"
+        datetime2 EndDate "Validity end datetime"
+        int MaxTotalUses "Global coupon usage limit"
+        int CurrentUses "Atomic counter of successful uses"
+        int MaxUsesPerClient "Per-user redemption limit"
+        int IDCategory FK "Optional category constraint"
+        bit IsActive "Active coupon flag"
+    }
+
+    COUPON_USAGES {
+        int IDCouponUsage PK "Autoincremental primary key"
+        int IDCoupon FK "Redeemed coupon identifier"
+        int IDUser FK "Customer who applied coupon"
+        int IDOrder FK "Order where discount was applied"
+        decimal DiscountApplied "Actual discount amount granted"
+        datetime2 UsedAt "Redemption timestamp"
+    }
+
+    ORDERS {
+        int IDOrder PK "Autoincremental primary key"
+        varchar OrderNumber UK "Human-readable code (e.g. ORD-2026-0001)"
+        int IDUser FK "Customer who placed order"
+        int IDDeliveryAddress FK "Delivery address reference"
+        nvarchar ShippingAddressSnapshot "Immutable JSON snapshot of delivery address"
+        decimal NetSubtotal "Tax base amount (Total - IVA)"
+        decimal IVATaxAmount "12% IVA tax amount calculated"
+        decimal DiscountTotal "Total discount applied"
+        decimal GrandTotal "Final paid amount in Quetzales (GTQ)"
+        int IDCoupon FK "Applied coupon reference"
+        varchar Status "PAYMENT_PENDING, PAID, DISPATCHED, etc."
+        varchar IdempotencyKey UK "UUID preventing duplicate payment and orders"
+        datetime2 CreatedAt "Order placement timestamp"
+        datetime2 UpdatedAt "Last status update timestamp"
+    }
+
+    ORDER_ITEMS {
+        int IDOrderItem PK "Autoincremental primary key"
+        int IDOrder FK "Parent order identifier"
+        int IDVariant FK "Product variant sold"
+        varchar HistoricalSKU "Frozen SKU code at purchase time"
+        nvarchar HistoricalProductName "Frozen product name at purchase time"
+        decimal UnitPrice "Frozen unit price in GTQ at purchase time"
+        int QuantitySold "Quantity purchased"
+        int QuantityReturned "Quantity refunded (CHECK <= QuantitySold)"
+        decimal LineTotal "Frozen line total (UnitPrice * QuantitySold)"
+    }
+
+    ORDER_STATUS_HISTORY {
+        int IDOrderStatusHistory PK "Autoincremental primary key"
+        int IDOrder FK "Parent order identifier"
+        varchar PreviousStatus "Previous status code"
+        varchar NewStatus "New transitioned status code"
+        int IDUser FK "Operator or System executing transition"
+        nvarchar Reason "Reason for transition or cancellation"
+        datetime2 ChangedAt "Audit timestamp of state transition"
+    }
+
+    RETURNS {
+        int IDReturn PK "Autoincremental primary key"
+        int IDOrder FK "Associated order identifier"
+        int IDOperatorUser FK "Operator authorising the return"
+        nvarchar Reason "Customer / quality reason for return"
+        decimal TotalRefundAmount "Total refunded amount in GTQ"
+        datetime2 CreatedAt "Return creation timestamp"
+    }
+
+    RETURN_ITEMS {
+        int IDReturnItem PK "Autoincremental primary key"
+        int IDReturn FK "Parent return record"
+        int IDOrderItem FK "Order line item being returned"
+        int QuantityReturned "Quantity returned in this event"
+        decimal RefundedAmount "Refunded monetary amount"
+    }
+
+    KARDEX {
+        int IDKardex PK "Autoincremental primary key"
+        int IDVariant FK "Product variant affected"
+        varchar MovementType "PURCHASE_ENTRY, SALE_EXIT, ADJUSTMENT, RETURN"
+        int Quantity "Quantity moved (signed or magnitude)"
+        int PreviousBalance "Physical stock before movement"
+        int NewBalance "Physical stock after movement"
+        nvarchar Reason "Mandatory explanation of the movement"
+        int IDUser FK "User who authorized or triggered movement"
+        int IDOrder FK "Order reference for sales and returns"
+        datetime2 MovementDate "Exact timestamp of stock transaction"
+    }
+
+    AUDIT_LOG {
+        int IDAuditLog PK "Autoincremental primary key"
+        int IDUser FK "User who performed the modification"
+        varchar Module "Module: CATALOG, INVENTORY, PRICING, ORDERS"
+        varchar EntityName "Affected table or entity name"
+        varchar EntityID "ID of the affected entity instance"
+        varchar ActionType "CREATE, UPDATE, DEACTIVATE"
+        nvarchar PreviousValueJson "Immutable JSON snapshot before change"
+        nvarchar NewValueJson "Immutable JSON snapshot after change"
+        datetime2 LoggedAt "Audit record creation timestamp"
+    }
+
+    CONFIGURATIONS }o--o| USERS : "updated_by"
+
+    USERS ||--o{ REFRESH_TOKENS : "has"
+    USERS ||--o{ ADDRESSES : "owns"
+    USERS ||--o{ CARTS : "owns"
+    USERS ||--o{ ORDERS : "places"
+    USERS ||--o{ COUPON_USAGES : "redeems"
+    USERS ||--o{ KARDEX : "executes"
+    USERS ||--o{ AUDIT_LOG : "triggers"
+
+    CATEGORIES ||--o{ CATEGORIES : "subcategories"
+    CATEGORIES ||--o{ PRODUCTS : "classifies"
+    CATEGORIES ||--o{ COUPONS : "restricts"
+
+    PRODUCTS ||--|{ PRODUCT_VARIANTS : "composed_of"
+
+    PRODUCT_VARIANTS ||--o{ CART_ITEMS : "added_to"
+    PRODUCT_VARIANTS ||--o{ STOCK_RESERVATIONS : "held_by"
+    PRODUCT_VARIANTS ||--o{ ORDER_ITEMS : "sold_in"
+    PRODUCT_VARIANTS ||--o{ KARDEX : "tracked_in"
+
+    CARTS ||--o{ CART_ITEMS : "contains"
+    CARTS ||--o{ STOCK_RESERVATIONS : "initiates"
+
+    ORDERS ||--|{ ORDER_ITEMS : "details"
+    ORDERS ||--o{ ORDER_STATUS_HISTORY : "tracks_lifecycle"
+    ORDERS ||--o{ COUPON_USAGES : "applies"
+    ORDERS ||--o{ RETURNS : "originates"
+    ORDERS ||--o{ STOCK_RESERVATIONS : "fulfills"
+
+    RETURNS ||--|{ RETURN_ITEMS : "details"
+    ORDER_ITEMS ||--o{ RETURN_ITEMS : "refunded_item"
+    COUPONS ||--o{ COUPON_USAGES : "recorded_in"
