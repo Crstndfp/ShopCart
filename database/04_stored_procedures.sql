@@ -8,6 +8,10 @@
 USE ShopCartDB;
 GO
 
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- ============================================================================
 -- 1. AUTHENTICATION & USERS MODULE (RF-01)
 -- ============================================================================
@@ -48,7 +52,7 @@ BEGIN
         -- Audit Log entry
         INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, NewValueJson, LoggedAt)
         VALUES (@NewIDUser, 'AUTH', 'Users', CAST(@NewIDUser AS VARCHAR(50)), 'CREATE', 
-                (SELECT FullName, Email, @RoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), 
+                (SELECT @FullName AS FullName, @Email AS Email, @RoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), 
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
 END;
@@ -270,7 +274,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT C.IDCategoria, C.IDParentCategory, C.Name, C.Description, C.IsActive, C.CreatedAt,
+    SELECT C.IDCategory, C.IDParentCategory, C.Name, C.Description, C.IsActive, C.CreatedAt,
            (SELECT COUNT(1) FROM dbo.Products P WHERE P.IDCategory = C.IDCategory AND P.IsActive = 1) AS ActiveProductsCount
     FROM dbo.Categories C
     WHERE (@OnlyActive = 0 OR C.IsActive = 1)

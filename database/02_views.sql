@@ -8,6 +8,10 @@
 USE ShopCartDB;
 GO
 
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- ============================================================================
 -- 1. VW_Dashboard_SalesSummary
 -- Sales aggregated by completed orders, factoring in returns
