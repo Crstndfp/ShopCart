@@ -1,15 +1,18 @@
 import cors from 'cors';
 import express, { Request, Response } from 'express';
 import helmet from 'helmet';
+import { env } from './config/env.js';
 import { getDbPool } from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
+import { notFoundHandler } from './middlewares/not-found.middleware.js';
+import { errorHandler } from './middlewares/error.middleware.js';
 
 const app = express();
 
-// 1. Middlewares globales                                                                                                                                                                       
+// 1. Middlewares globales
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
-app.use(express.json()); // Parsea el body de JSON a req.body                                                                                                                                    
+app.use(cors({ origin: env.CORS_ORIGIN }));
+app.use(express.json());
 
 // 2. Endpoint de Health Check
 app.get('/api/v1/health', async (req: Request, res: Response) => {
@@ -32,5 +35,13 @@ app.get('/api/v1/health', async (req: Request, res: Response) => {
   }
 });
 
-app.use('/api/v1/auth', authRoutes);
+// 3. Rutas de la API
+app.use(`${env.API_PREFIX}/auth`, authRoutes);
+
+// 4. Captura de rutas no encontradas (404)
+app.use(notFoundHandler);
+
+// 5. Middleware global de errores
+app.use(errorHandler);
+
 export default app;
