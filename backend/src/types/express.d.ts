@@ -9,6 +9,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: UserTokenPayload;
+      cartId?: number;
+      guestToken?: string;
     }
   }
 }

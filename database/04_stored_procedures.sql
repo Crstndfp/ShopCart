@@ -779,6 +779,37 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.SP_Cart_RemoveItem
+    @IDCart INT,
+    @IDVariant INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DELETE FROM dbo.CartItems 
+    WHERE IDCart = @IDCart AND IDVariant = @IDVariant;
+
+    UPDATE dbo.Carts 
+    SET LastActivityAt = SYSUTCDATETIME() 
+    WHERE IDCart = @IDCart;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Cart_Clear
+    @IDCart INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DELETE FROM dbo.CartItems 
+    WHERE IDCart = @IDCart;
+
+    UPDATE dbo.Carts 
+    SET LastActivityAt = SYSUTCDATETIME() 
+    WHERE IDCart = @IDCart;
+END;
+GO
+
 CREATE OR ALTER PROCEDURE dbo.SP_Cart_GetCartDetails
     @IDCart INT
 AS
