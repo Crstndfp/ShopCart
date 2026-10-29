@@ -305,6 +305,46 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.SP_Categories_Update
+    @IDCategory INT,
+    @IDParentCategory INT = NULL,
+    @Name NVARCHAR(100),
+    @Description NVARCHAR(255) = NULL,
+    @IsActive BIT,
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Categories WHERE IDCategory = @IDCategory)
+    BEGIN
+        RAISERROR('CATEGORY_NOT_FOUND: Category does not exist.', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Categories WHERE Name = @Name AND IDCategory <> @IDCategory)
+    BEGIN
+        RAISERROR('CATEGORY_EXISTS: Another category with this name already exists.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.Categories
+        SET IDParentCategory = @IDParentCategory,
+            Name = @Name,
+            Description = @Description,
+            IsActive = @IsActive
+        WHERE IDCategory = @IDCategory;
+
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, NewValueJson, LoggedAt)
+        VALUES (@UserID, 'CATALOG', 'Categories', CAST(@IDCategory AS VARCHAR(50)), 'UPDATE',
+                (SELECT @Name AS Name, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
+
 CREATE OR ALTER PROCEDURE dbo.SP_Products_Create
     @IDCategory INT,
     @Name NVARCHAR(150),
@@ -410,6 +450,133 @@ BEGIN
         INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, NewValueJson, LoggedAt)
         VALUES (@UserID, 'CATALOG', 'Products', CAST(@IDProduct AS VARCHAR(50)), 'DEACTIVATE',
                 (SELECT @IDProduct AS IDProduct, @SalesCount AS HistoricalSalesCount FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Products_Update
+    @IDProduct INT,
+    @IDCategory INT,
+    @Name NVARCHAR(150),
+    @Description NVARCHAR(MAX) = NULL,
+    @MainImageUrl NVARCHAR(500) = NULL,
+    @IsActive BIT,
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Products WHERE IDProduct = @IDProduct)
+    BEGIN
+        RAISERROR('PRODUCT_NOT_FOUND: Product does not exist.', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Categories WHERE IDCategory = @IDCategory AND IsActive = 1)
+    BEGIN
+        RAISERROR('INVALID_CATEGORY: Specified category does not exist or is inactive.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.Products
+        SET IDCategory = @IDCategory,
+            Name = @Name,
+            Description = @Description,
+            MainImageUrl = @MainImageUrl,
+            IsActive = @IsActive,
+            UpdatedAt = SYSUTCDATETIME()
+        WHERE IDProduct = @IDProduct;
+
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, NewValueJson, LoggedAt)
+        VALUES (@UserID, 'CATALOG', 'Products', CAST(@IDProduct AS VARCHAR(50)), 'UPDATE',
+                (SELECT @IDProduct AS IDProduct, @Name AS Name, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Products_GetByID
+    @IDProduct INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Product Header
+    SELECT 
+        P.IDProduct,
+        P.IDCategory,
+        C.Name AS CategoryName,
+        P.Name AS ProductName,
+        P.Description,
+        P.MainImageUrl,
+        P.IsActive,
+        P.CreatedAt,
+        P.UpdatedAt
+    FROM dbo.Products P
+    JOIN dbo.Categories C ON P.IDCategory = C.IDCategory
+    WHERE P.IDProduct = @IDProduct;
+
+    -- Product Variants with Available Stock
+    SELECT 
+        PV.IDVariant,
+        PV.IDProduct,
+        PV.SKU,
+        PV.AttributesJson,
+        PV.Price,
+        PV.PhysicalStock,
+        FAS.ReservedQuantity,
+        FAS.AvailableStock,
+        PV.IsActive,
+        PV.CreatedAt
+    FROM dbo.ProductVariants PV
+    CROSS APPLY dbo.FU_Catalog_AvailableStock(PV.IDVariant) FAS
+    WHERE PV.IDProduct = @IDProduct
+    ORDER BY PV.IDVariant ASC;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Variants_Update
+    @IDVariant INT,
+    @AttributesJson NVARCHAR(500),
+    @Price DECIMAL(12,2),
+    @IsActive BIT,
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Price < 0
+    BEGIN
+        RAISERROR('INVALID_PRICE: Price cannot be negative.', 16, 1);
+        RETURN;
+    END
+
+    DECLARE @OldPrice DECIMAL(12,2);
+    SELECT @OldPrice = Price FROM dbo.ProductVariants WHERE IDVariant = @IDVariant;
+
+    IF @OldPrice IS NULL
+    BEGIN
+        RAISERROR('VARIANT_NOT_FOUND: Product variant does not exist.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.ProductVariants
+        SET AttributesJson = @AttributesJson,
+            Price = @Price,
+            IsActive = @IsActive,
+            UpdatedAt = SYSUTCDATETIME()
+        WHERE IDVariant = @IDVariant;
+
+        -- Record in audit log (especially price changes - RF-09)
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, PreviousValueJson, NewValueJson, LoggedAt)
+        VALUES (@UserID, 'CATALOG', 'ProductVariants', CAST(@IDVariant AS VARCHAR(50)), 'UPDATE',
+                (SELECT @OldPrice AS Price FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                (SELECT @Price AS Price, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
 END;
