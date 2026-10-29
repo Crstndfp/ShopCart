@@ -82,6 +82,29 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.SP_Auth_GetUserByID
+    @IDUser INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        U.IDUser,
+        U.IDRole,
+        VL.Code AS RoleCode,
+        VL.Name AS RoleName,
+        U.FullName,
+        U.Email,
+        U.PhoneNumber,
+        U.IsActive,
+        U.CreatedAt,
+        U.UpdatedAt
+    FROM dbo.Users U
+    JOIN dbo.ValuesLookup VL ON U.IDRole = VL.IDValue
+    WHERE U.IDUser = @IDUser;
+END;
+GO
+
 CREATE OR ALTER PROCEDURE dbo.SP_Auth_SaveRefreshToken
     @IDUser INT,
     @TokenHash VARCHAR(128),

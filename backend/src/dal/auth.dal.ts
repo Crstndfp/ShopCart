@@ -34,4 +34,57 @@ export class AuthDal {
 
         return result.recordset[0] || null;
     }
+
+    async getUserByID(idUser: number) {
+        const pool = await getDbPool();
+
+        const result = await pool
+            .request()
+            .input('IDUser', sql.Int, idUser)
+            .execute('SP_Auth_GetUserByID');
+
+        return result.recordset[0] || null;
+    }
+
+    async saveRefreshToken(idUser: number, tokenHash: string, expiresAt: Date): Promise<void> {
+        const pool = await getDbPool();
+
+        await pool
+            .request()
+            .input('IDUser', sql.Int, idUser)
+            .input('TokenHash', sql.VarChar(128), tokenHash)
+            .input('ExpiresAt', sql.DateTime2(3), expiresAt)
+            .execute('SP_Auth_SaveRefreshToken');
+    }
+
+    async rotateRefreshToken(
+        oldTokenHash: string,
+        newTokenHash: string,
+        newExpiresAt: Date
+    ): Promise<{ idUser: number; roleCode: string }> {
+        const pool = await getDbPool();
+
+        const result = await pool
+            .request()
+            .input('OldTokenHash', sql.VarChar(128), oldTokenHash)
+            .input('NewTokenHash', sql.VarChar(128), newTokenHash)
+            .input('NewExpiresAt', sql.DateTime2(3), newExpiresAt)
+            .output('UserID', sql.Int)
+            .output('RoleCode', sql.VarChar(50))
+            .execute('SP_Auth_RotateRefreshToken');
+
+        return {
+            idUser: result.output.UserID as number,
+            roleCode: result.output.RoleCode as string,
+        };
+    }
+
+    async revokeRefreshToken(tokenHash: string): Promise<void> {
+        const pool = await getDbPool();
+
+        await pool
+            .request()
+            .input('TokenHash', sql.VarChar(128), tokenHash)
+            .execute('SP_Auth_RevokeRefreshToken');
+    }
 }
