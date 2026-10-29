@@ -1,31 +1,29 @@
-import dotenv from 'dotenv';
 import sql from 'mssql';
+import { env } from './env.js';
 
-    dotenv.config();                                                                                                                                                                                 
-                                                                                                                                                                                                     
-    const dbConfig: sql.config = {                                                                                                                                                                   
-      server: process.env.DB_SERVER || 'localhost',                                                                                                                                                  
-      port: parseInt(process.env.DB_PORT || '1433', 10),                                                                                                                                             
-      database: process.env.DB_NAME || 'ShopCartDB',                                                                                                                                                 
-      user: process.env.DB_USER || 'sa',                                                                                                                                                             
-      password: process.env.DB_PASSWORD || 'PentandraShopCart2026!',                                                                                                                                 
-      options: {                                                                                                                                                                                     
-        encrypt: process.env.DB_ENCRYPT === 'true', // true para Azure, false para Docker local                                                                                                      
-        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',                                                                                                                 
-      },                                                                                                                                                                                             
-      pool: {                                                                                                                                                                                        
-        min: 5,                                                                                                                                                                                      
-        max: 25,                                                                                                                                                                                     
-        idleTimeoutMillis: 30000,                                                                                                                                                                    
-      },                                                                                                                                                                                             
-    };                                                                                                                                                                                               
-                                                                                                                                                                                                     
-    let pool: sql.ConnectionPool | null = null;                                                                                                                                                      
-                                                                                                                                                                                                     
-    export async function getDbPool(): Promise<sql.ConnectionPool> {                                                                                                                                 
-      if (!pool) {                                                                                                                                                                                   
-        pool = await new sql.ConnectionPool(dbConfig).connect();                                                                                                                                     
-        console.log(' Connected to SQL Server (ShopCartDB)');                                                                                                                                        
-      }                                                                                                                                                                                              
-      return pool;                                                                                                                                                                                   
-    }
+const dbConfig: sql.config = {
+  server: env.DB_SERVER,
+  port: env.DB_PORT,
+  database: env.DB_NAME,
+  user: env.DB_USER,
+  password: env.DB_PASSWORD,
+  options: {
+    encrypt: env.DB_ENCRYPT,
+    trustServerCertificate: env.DB_TRUST_SERVER_CERTIFICATE,
+  },
+  pool: {
+    min: env.DB_POOL_MIN,
+    max: env.DB_POOL_MAX,
+    idleTimeoutMillis: 30000,
+  },
+};
+
+let pool: sql.ConnectionPool | null = null;
+
+export async function getDbPool(): Promise<sql.ConnectionPool> {
+  if (!pool) {
+    pool = await new sql.ConnectionPool(dbConfig).connect();
+    console.log(`Connected to SQL Server (${env.DB_NAME} on ${env.DB_SERVER}:${env.DB_PORT})`);
+  }
+  return pool;
+}

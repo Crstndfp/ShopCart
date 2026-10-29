@@ -2,6 +2,7 @@ import argon2 from 'argon2';
 import { AuthDal } from '../dal/auth.dal.js';
 import { RegisterDto, LoginDto } from '../dtos/auth.dto.js';
 import { ConflictError, UnauthorizedError } from '../errors/app-error.js';
+import { env } from '../config/env.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -73,10 +74,10 @@ export class AuthService {
     };
     const accessToken = generateAccessToken(tokenPayload);
 
-    // 4. Generate and store Rotating Refresh Token (7 days)
+    // 4. Generate and store Rotating Refresh Token
     const rawRefreshToken = generateRefreshToken();
     const tokenHash = hashRefreshToken(rawRefreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
     await this.authDal.saveRefreshToken(user.IDUser, tokenHash, expiresAt);
 
@@ -91,7 +92,7 @@ export class AuthService {
     const oldTokenHash = hashRefreshToken(rawRefreshToken);
     const newRawRefreshToken = generateRefreshToken();
     const newTokenHash = hashRefreshToken(newRawRefreshToken);
-    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const newExpiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
     // SP_Auth_RotateRefreshToken executes atomic rotation and checks for token reuse
     const rotated = await this.authDal.rotateRefreshToken(oldTokenHash, newTokenHash, newExpiresAt);
