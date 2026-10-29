@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 import { getDbPool } from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
 import catalogRoutes from './routes/catalog.routes.js';
+import cartRoutes from './routes/cart.routes.js';
 import { notFoundHandler } from './middlewares/not-found.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
@@ -39,6 +40,7 @@ app.get('/api/v1/health', async (req: Request, res: Response) => {
 // 3. Rutas de la API
 app.use(`${env.API_PREFIX}/auth`, authRoutes);
 app.use(`${env.API_PREFIX}/catalog`, catalogRoutes);
+app.use(`${env.API_PREFIX}/cart`, cartRoutes);
 
 // 4. Captura de rutas no encontradas (404)
 app.use(notFoundHandler);
