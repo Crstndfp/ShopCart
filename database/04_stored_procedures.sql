@@ -1710,6 +1710,50 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.SP_Orders_List
+    @IDUser INT = NULL,             -- If provided (client), only return that user's orders
+    @Status VARCHAR(30) = NULL,      -- Filter by status (PAID, IN_PREPARATION, etc.)
+    @StartDate DATETIME2(3) = NULL,  -- Filter by start date
+    @EndDate DATETIME2(3) = NULL,    -- Filter by end date
+    @PageNumber INT = 1,
+    @PageSize INT = 20
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    WITH OrderList AS (
+        SELECT 
+            O.IDOrder,
+            O.OrderNumber,
+            O.IDUser,
+            U.FullName AS CustomerName,
+            U.Email AS CustomerEmail,
+            O.NetSubtotal,
+            O.IVATaxAmount,
+            O.DiscountTotal,
+            O.GrandTotal,
+            O.Status,
+            O.CreatedAt,
+            O.UpdatedAt,
+            (SELECT COUNT(1) FROM dbo.OrderItems OI WHERE OI.IDOrder = O.IDOrder) AS ItemCount
+        FROM dbo.Orders O
+        JOIN dbo.Users U ON O.IDUser = U.IDUser
+        WHERE (@IDUser IS NULL OR O.IDUser = @IDUser)
+          AND (@Status IS NULL OR O.Status = @Status)
+          AND (@StartDate IS NULL OR O.CreatedAt >= @StartDate)
+          AND (@EndDate IS NULL OR O.CreatedAt <= @EndDate)
+    ),
+    CountedList AS (
+        SELECT COUNT(1) OVER() AS TotalRows, * FROM OrderList
+    )
+    SELECT * FROM CountedList
+    ORDER BY CreatedAt DESC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
 -- ============================================================================
 -- 7. AUDIT & SYSTEM CONFIGURATIONS MODULE (RF-08, RF-09)
 -- ============================================================================

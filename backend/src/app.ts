@@ -7,6 +7,8 @@ import authRoutes from './routes/auth.routes.js';
 import catalogRoutes from './routes/catalog.routes.js';
 import cartRoutes from './routes/cart.routes.js';
 import couponRoutes from './routes/coupon.routes.js';
+import addressRoutes from './routes/address.routes.js';
+import orderRoutes from './routes/order.routes.js';
 import { notFoundHandler } from './middlewares/not-found.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
@@ -43,6 +45,8 @@ app.use(`${env.API_PREFIX}/auth`, authRoutes);
 app.use(`${env.API_PREFIX}/catalog`, catalogRoutes);
 app.use(`${env.API_PREFIX}/cart`, cartRoutes);
 app.use(`${env.API_PREFIX}/coupons`, couponRoutes);
+app.use(`${env.API_PREFIX}/addresses`, addressRoutes);
+app.use(`${env.API_PREFIX}/orders`, orderRoutes);
 
 // 4. Captura de rutas no encontradas (404)
 app.use(notFoundHandler);
