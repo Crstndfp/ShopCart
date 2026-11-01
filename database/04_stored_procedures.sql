@@ -1038,6 +1038,99 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.SP_Inventory_GetKardex
+    @IDVariant INT = NULL,
+    @MovementType VARCHAR(30) = NULL,
+    @StartDate DATETIME2(3) = NULL,
+    @EndDate DATETIME2(3) = NULL,
+    @PageNumber INT = 1,
+    @PageSize INT = 20
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    WITH KardexEntries AS (
+        SELECT 
+            K.IDKardex,
+            K.IDVariant,
+            PV.SKU,
+            P.Name AS ProductName,
+            PV.AttributesJson,
+            K.MovementType,
+            K.Quantity,
+            K.PreviousBalance,
+            K.NewBalance,
+            K.Reason,
+            K.IDUser,
+            U.FullName AS OperatorName,
+            K.IDOrder,
+            K.MovementDate
+        FROM dbo.Kardex K
+        JOIN dbo.ProductVariants PV ON K.IDVariant = PV.IDVariant
+        JOIN dbo.Products P ON PV.IDProduct = P.IDProduct
+        JOIN dbo.Users U ON K.IDUser = U.IDUser
+        WHERE (@IDVariant IS NULL OR K.IDVariant = @IDVariant)
+          AND (@MovementType IS NULL OR K.MovementType = @MovementType)
+          AND (@StartDate IS NULL OR K.MovementDate >= @StartDate)
+          AND (@EndDate IS NULL OR K.MovementDate <= @EndDate)
+    ),
+    CountedData AS (
+        SELECT COUNT(1) OVER() AS TotalRows, * FROM KardexEntries
+    )
+    SELECT * FROM CountedData
+    ORDER BY MovementDate DESC, IDKardex DESC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Inventory_GetStockOverview
+    @IDCategory INT = NULL,
+    @SearchTerm NVARCHAR(100) = NULL,
+    @LowStockOnly BIT = 0,
+    @PageNumber INT = 1,
+    @PageSize INT = 20
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    WITH StockEntries AS (
+        SELECT 
+            PV.IDVariant,
+            PV.IDProduct,
+            P.Name AS ProductName,
+            C.Name AS CategoryName,
+            PV.SKU,
+            PV.Price,
+            PV.PhysicalStock,
+            ISNULL((
+                SELECT SUM(SR.QuantityReserved)
+                FROM dbo.StockReservations SR
+                WHERE SR.IDVariant = PV.IDVariant
+                  AND SR.Status = 'ACTIVE'
+                  AND SR.ExpiresAt > SYSUTCDATETIME()
+            ), 0) AS ReservedStock,
+            dbo.FU_Catalog_AvailableStock(PV.IDVariant) AS AvailableStock,
+            PV.IsActive
+        FROM dbo.ProductVariants PV
+        JOIN dbo.Products P ON PV.IDProduct = P.IDProduct
+        JOIN dbo.Categories C ON P.IDCategory = C.IDCategory
+        WHERE (@IDCategory IS NULL OR P.IDCategory = @IDCategory)
+          AND (@SearchTerm IS NULL OR P.Name LIKE '%' + @SearchTerm + '%' OR PV.SKU LIKE '%' + @SearchTerm + '%')
+          AND (@LowStockOnly = 0 OR dbo.FU_Catalog_AvailableStock(PV.IDVariant) <= 5)
+    ),
+    CountedData AS (
+        SELECT COUNT(1) OVER() AS TotalRows, * FROM StockEntries
+    )
+    SELECT * FROM CountedData
+    ORDER BY ProductName ASC, SKU ASC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
 -- ============================================================================
 -- 5. COUPONS MODULE (RF-05)
 -- ============================================================================
@@ -1850,5 +1943,91 @@ BEGIN
     SELECT * FROM CountedData
     ORDER BY LoggedAt DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+-- ============================================================================
+-- 8. ANALYTICS & DASHBOARD REPORTS (RF-08)
+-- ============================================================================
+
+CREATE OR ALTER PROCEDURE dbo.SP_Reports_GetSalesSummary
+    @StartDate DATE = NULL,
+    @EndDate DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        SalesDate,
+        SalesYear,
+        SalesWeek,
+        SalesMonth,
+        TotalOrdersCount,
+        GrossSalesAmount,
+        TotalRefundedAmount,
+        NetSalesAmount,
+        AverageOrderTicket
+    FROM dbo.VW_Dashboard_SalesSummary
+    WHERE (@StartDate IS NULL OR SalesDate >= @StartDate)
+      AND (@EndDate IS NULL OR SalesDate <= @EndDate)
+    ORDER BY SalesDate DESC;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Reports_GetSalesByCategory
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        IDCategory,
+        CategoryName,
+        OrdersCount,
+        NetUnitsSold,
+        GrossCategorySales,
+        CategoryRefundedAmount,
+        NetCategorySales
+    FROM dbo.VW_Dashboard_SalesByCategory
+    ORDER BY NetCategorySales DESC;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Reports_GetTopSellingProducts
+    @TopN INT = 10
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (@TopN)
+        IDProduct,
+        ProductName,
+        CategoryName,
+        IDVariant,
+        SKU,
+        NetUnitsSold,
+        NetProductSales
+    FROM dbo.VW_Dashboard_TopSellingProducts
+    ORDER BY NetUnitsSold DESC, NetProductSales DESC;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Reports_GetAbandonedCarts
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        IDCart,
+        IDUser,
+        CustomerName,
+        CustomerEmail,
+        GuestToken,
+        CreatedAt,
+        LastActivityAt,
+        InactiveHours,
+        TotalItemsCount,
+        EstimatedCartTotal
+    FROM dbo.VW_Dashboard_AbandonedCarts
+    ORDER BY LastActivityAt DESC;
 END;
 GO
