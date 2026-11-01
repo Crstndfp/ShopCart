@@ -6,6 +6,7 @@ import { getDbPool } from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
 import catalogRoutes from './routes/catalog.routes.js';
 import cartRoutes from './routes/cart.routes.js';
+import couponRoutes from './routes/coupon.routes.js';
 import { notFoundHandler } from './middlewares/not-found.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
@@ -41,6 +42,7 @@ app.get('/api/v1/health', async (req: Request, res: Response) => {
 app.use(`${env.API_PREFIX}/auth`, authRoutes);
 app.use(`${env.API_PREFIX}/catalog`, catalogRoutes);
 app.use(`${env.API_PREFIX}/cart`, cartRoutes);
+app.use(`${env.API_PREFIX}/coupons`, couponRoutes);
 
 // 4. Captura de rutas no encontradas (404)
 app.use(notFoundHandler);

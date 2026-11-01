@@ -1104,6 +1104,137 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.SP_Coupons_List
+    @OnlyActive BIT = 0,
+    @PageNumber INT = 1,
+    @PageSize INT = 20
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    WITH CouponList AS (
+        SELECT 
+            CP.IDCoupon,
+            CP.Code,
+            CP.DiscountType,
+            CP.DiscountValue,
+            CP.MinPurchaseAmount,
+            CP.StartDate,
+            CP.EndDate,
+            CP.MaxTotalUses,
+            CP.CurrentUses,
+            CP.MaxUsesPerClient,
+            CP.IDCategory,
+            C.Name AS CategoryName,
+            CP.IsActive,
+            CP.CreatedAt
+        FROM dbo.Coupons CP
+        LEFT JOIN dbo.Categories C ON CP.IDCategory = C.IDCategory
+        WHERE (@OnlyActive = 0 OR CP.IsActive = 1)
+    ),
+    CountedList AS (
+        SELECT COUNT(1) OVER() AS TotalRows, * FROM CouponList
+    )
+    SELECT * FROM CountedList
+    ORDER BY CreatedAt DESC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Coupons_GetByID
+    @IDCoupon INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        CP.IDCoupon,
+        CP.Code,
+        CP.DiscountType,
+        CP.DiscountValue,
+        CP.MinPurchaseAmount,
+        CP.StartDate,
+        CP.EndDate,
+        CP.MaxTotalUses,
+        CP.CurrentUses,
+        CP.MaxUsesPerClient,
+        CP.IDCategory,
+        C.Name AS CategoryName,
+        CP.IsActive,
+        CP.CreatedAt
+    FROM dbo.Coupons CP
+    LEFT JOIN dbo.Categories C ON CP.IDCategory = C.IDCategory
+    WHERE CP.IDCoupon = @IDCoupon;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Coupons_Update
+    @IDCoupon INT,
+    @DiscountType VARCHAR(20),
+    @DiscountValue DECIMAL(12,2),
+    @MinPurchaseAmount DECIMAL(12,2),
+    @StartDate DATETIME2(3),
+    @EndDate DATETIME2(3),
+    @MaxTotalUses INT,
+    @MaxUsesPerClient INT,
+    @IDCategory INT = NULL,
+    @IsActive BIT,
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Coupons WHERE IDCoupon = @IDCoupon)
+    BEGIN
+        RAISERROR('COUPON_NOT_FOUND: Coupon does not exist.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.Coupons
+        SET DiscountType = @DiscountType,
+            DiscountValue = @DiscountValue,
+            MinPurchaseAmount = @MinPurchaseAmount,
+            StartDate = @StartDate,
+            EndDate = @EndDate,
+            MaxTotalUses = @MaxTotalUses,
+            MaxUsesPerClient = @MaxUsesPerClient,
+            IDCategory = @IDCategory,
+            IsActive = @IsActive
+        WHERE IDCoupon = @IDCoupon;
+
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, NewValueJson, LoggedAt)
+        VALUES (@UserID, 'COUPONS', 'Coupons', CAST(@IDCoupon AS VARCHAR(50)), 'UPDATE',
+                (SELECT @DiscountType AS DiscountType, @DiscountValue AS DiscountValue, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Coupons_Deactivate
+    @IDCoupon INT,
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.Coupons 
+        SET IsActive = 0 
+        WHERE IDCoupon = @IDCoupon;
+
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, NewValueJson, LoggedAt)
+        VALUES (@UserID, 'COUPONS', 'Coupons', CAST(@IDCoupon AS VARCHAR(50)), 'DEACTIVATE',
+                (SELECT @IDCoupon AS IDCoupon, 0 AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
+
 -- ============================================================================
 -- 6. ORDERS, CHECKOUT & RETURNS (RF-06, RF-07) - STRICT ATOMICITY
 -- ============================================================================

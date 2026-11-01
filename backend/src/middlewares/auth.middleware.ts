@@ -16,6 +16,22 @@ export function authenticateJwt(req: Request, res: Response, next: NextFunction)
   next();
 }
 
+export function optionalAuthenticateJwt(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.split(' ')[1];
+      const payload = verifyAccessToken(token);
+      req.user = payload;
+    } catch {
+      // Token is invalid/expired; continue unauthenticated without failing
+    }
+  }
+
+  next();
+}
+
 export function requireRoles(...allowedRoles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
