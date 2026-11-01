@@ -63,9 +63,9 @@ GO
 IF OBJECT_ID(N'dbo.Users', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Users (
-        IDUser INT IDENTITY(1,1) NOT NULL,
+        IDUser INT IDENTITY(1,1) NOT NULL, -- could be UUID key
         IDRole INT NOT NULL,
-        FullName NVARCHAR(150) NOT NULL,
+        FullName NVARCHAR(150) NOT NULL, -- I do not know if better have two fields, firstnames and lastnames
         Email VARCHAR(150) NOT NULL,
         PasswordHash VARCHAR(255) NOT NULL,
         PhoneNumber VARCHAR(30) NULL,
@@ -80,6 +80,7 @@ END
 GO
 
 -- Add FK from Configurations to Users now that Users exists
+-- configurations for users ?
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Configurations_User')
 BEGIN
     ALTER TABLE dbo.Configurations
@@ -87,7 +88,7 @@ BEGIN
 END
 GO
 
-IF OBJECT_ID(N'dbo.RefreshTokens', N'U') IS NULL
+IF OBJECT_ID(N'dbo.RefreshTokens', N'U') IS NULL -- how does it work ?
 BEGIN
     CREATE TABLE dbo.RefreshTokens (
         IDRefreshToken INT IDENTITY(1,1) NOT NULL,
@@ -149,11 +150,11 @@ GO
 IF OBJECT_ID(N'dbo.Products', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Products (
-        IDProduct INT IDENTITY(1,1) NOT NULL,
+        IDProduct INT IDENTITY(1,1) NOT NULL, -- UUID ?
         IDCategory INT NOT NULL,
         Name NVARCHAR(150) NOT NULL,
         Description NVARCHAR(MAX) NULL,
-        MainImageUrl NVARCHAR(500) NULL,
+        MainImageUrl NVARCHAR(500) NULL, -- what happend if i want many images paths by product ?
         IsActive BIT NOT NULL CONSTRAINT DF_Products_IsActive DEFAULT 1,
         CreatedAt DATETIME2(3) NOT NULL CONSTRAINT DF_Products_CreatedAt DEFAULT SYSUTCDATETIME(),
         UpdatedAt DATETIME2(3) NULL,
