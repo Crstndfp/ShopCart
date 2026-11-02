@@ -1,6 +1,8 @@
 import cors from 'cors';
 import express, { Request, Response } from 'express';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
+import { openApiSpec } from './docs/openapi.js';
 import { env } from './config/env.js';
 import { getDbPool } from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
@@ -19,11 +21,27 @@ import { errorHandler } from './middlewares/error.middleware.js';
 const app = express();
 
 // 1. Middlewares globales
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
 app.use(cors({ origin: env.CORS_ORIGIN }));
 app.use(express.json());
 
-// 2. Endpoint de Health Check
+// 2. Swagger UI Documentation
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(openApiSpec, {
+    customSiteTitle: 'ShopCart API - Swagger Documentation',
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  })
+);
+
+// 3. Endpoint de Health Check
 app.get('/api/v1/health', async (req: Request, res: Response) => {
   try {
     const pool = await getDbPool();

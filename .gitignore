@@ -62,3 +62,9 @@ mssql_data/
 *.bak
 *.mdf
 *.ldf
+
+# Manual API testing requests (local only, not versioned)
+*.http
+*.rest
+local-requests/
+
