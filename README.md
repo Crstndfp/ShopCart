@@ -444,3 +444,16 @@ stateDiagram-v2
 1. **Cancelación:** Solo permitida en estados `PAID` e `IN_PREPARATION`. Una vez el pedido pasa a `DISPATCHED`, **ya no puede cancelarse** (requiere entrega y proceso posterior de devolución).
 2. **Reintegro Automático al Kardex:** Toda cancelación o devolución reingresa inmediatamente las existencias físicas a la base de datos con motivo auditable y usuario responsable.
 3. **Control de Cantidad Devuelta:** Un `CHECK CONSTRAINT` en `OrderItems` garantiza que `QuantityReturned <= QuantitySold`, impidiendo que se devuelvan más unidades de las vendidas.
+
+---
+
+## 8. Licencia (Open Source Copyleft)
+
+Este proyecto está distribuido bajo la licencia **GNU General Public License v3.0 (GPLv3)**.
+
+> [!IMPORTANT]
+> **Condición de Uso en Proyectos de Código Abierto:**
+> La licencia GNU GPLv3 es una licencia de **Copyleft Recíproco Fuerte**. Garantiza que este software pueda ser utilizado, estudiado, modificado y redistribuido libremente por la comunidad, pero **exige legalmente** que cualquier proyecto, trabajo derivado o aplicación que incorpore o enlace este código sea publicado obligatoriamente como **código abierto bajo esta misma licencia (GPLv3)**. Queda prohibida su apropiación para proyectos privativos o de código cerrado.
+>
+> Para más detalles, consulta el archivo [LICENSE](LICENSE).
+
