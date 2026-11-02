@@ -57,8 +57,7 @@ out/
 .DS_Store
 Thumbs.db
 
-# Database / Docker volumes
-mssql_data/
+# Database backups / local files
 *.bak
 *.mdf
 *.ldf

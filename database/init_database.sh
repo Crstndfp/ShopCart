@@ -17,7 +17,7 @@ echo "=========================================================="
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Find sqlcmd or use docker exec fallback
+# Find sqlcmd client utility
 SQLCMD_BIN=""
 if command -v sqlcmd &> /dev/null; then
     SQLCMD_BIN="sqlcmd"
@@ -35,8 +35,8 @@ execute_sql_file() {
     if [ -n "$SQLCMD_BIN" ]; then
         "$SQLCMD_BIN" -S "${DB_HOST},${DB_PORT}" -U "${DB_USER}" -P "${DB_PASSWORD}" -C -i "$file_path"
     else
-        # Try running inside docker container if local sqlcmd not installed
-        docker exec -i shopcart-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U "${DB_USER}" -P "${DB_PASSWORD}" -C < "$file_path"
+        echo "Error: 'sqlcmd' utility not found. Please install sqlcmd or mssql-tools to execute database migrations." >&2
+        exit 1
     fi
 }
 

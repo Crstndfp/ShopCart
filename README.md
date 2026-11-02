@@ -32,12 +32,9 @@ git clone https://github.com/Crstndfp/ShopCart.git
 cd ShopCart
 ```
 
-### 2.3 Paso 2: Levantar la Base de Datos con Docker
-El repositorio incluye la configuración de Docker Compose para inicializar SQL Server 2022:
-```bash
-docker compose up -d
-```
-> **Nota:** La base de datos estará disponible en el puerto `1433` con el usuario `sa` y la contraseña `PentandraShopCart2026!`.
+### 2.3 Paso 2: Configuración de la Base de Datos (Microsoft SQL Server 2019+)
+Asegúrate de contar con una instancia activa de **Microsoft SQL Server 2019+** (local, en servidor o en la nube) accesible en el puerto configurado (por defecto `1433`).
+> **Credenciales por defecto:** Usuario `sa`, contraseña `PentandraShopCart2026!`.
 
 ### 2.4 Paso 3: Inicializar y Sembrar la Base de Datos
 Ejecuta el script automatizado para crear la base de datos, tablas, vistas, funciones, procedimientos almacenados y datos semilla:
