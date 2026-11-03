@@ -15,6 +15,7 @@ import inventoryRoutes from './routes/inventory.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import configurationRoutes from './routes/configuration.routes.js';
+import userRoutes from './routes/user.routes.js';
 import { notFoundHandler } from './middlewares/not-found.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import { requestLogger } from './middlewares/logger.middleware.js';
@@ -75,6 +76,7 @@ app.use(`${env.API_PREFIX}/inventory`, inventoryRoutes);
 app.use(`${env.API_PREFIX}/reports`, reportRoutes);
 app.use(`${env.API_PREFIX}/audit`, auditRoutes);
 app.use(`${env.API_PREFIX}/configurations`, configurationRoutes);
+app.use(`${env.API_PREFIX}/users`, userRoutes);
 
 // 4. Captura de rutas no encontradas (404)
 app.use(notFoundHandler);

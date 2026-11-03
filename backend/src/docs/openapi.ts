@@ -739,5 +739,100 @@ export const openApiSpec = {
         responses: { 200: { description: 'Configuration updated and audited' } },
       },
     },
+    '/users': {
+      post: {
+        tags: ['User Management'],
+        summary: 'Create a new user with any role (Administrator only)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['fullName', 'email', 'password', 'roleCode'],
+                properties: {
+                  fullName: { type: 'string', example: 'Carlos Bodeguero' },
+                  email: { type: 'string', format: 'email', example: 'carlos.bodega@shopcart.gt' },
+                  password: { type: 'string', minLength: 8, example: 'Password123!' },
+                  roleCode: { type: 'string', enum: ['ADMINISTRATOR', 'OPERATOR', 'CLIENT'], example: 'OPERATOR' },
+                  phoneNumber: { type: 'string', example: '+502 2222-3333' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: 'User created successfully' }, 409: { description: 'Email already exists' } },
+      },
+      get: {
+        tags: ['User Management'],
+        summary: 'List users with pagination, role filter, and text search (Administrator only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { in: 'query', name: 'page', schema: { type: 'integer', default: 1 } },
+          { in: 'query', name: 'limit', schema: { type: 'integer', default: 20 } },
+          { in: 'query', name: 'role', schema: { type: 'string', enum: ['ADMINISTRATOR', 'OPERATOR', 'CLIENT'] } },
+          { in: 'query', name: 'q', schema: { type: 'string', description: 'Search by full name or email' } },
+          { in: 'query', name: 'isActive', schema: { type: 'boolean' } },
+        ],
+        responses: { 200: { description: 'Paginated user list' } },
+      },
+    },
+    '/users/{id}': {
+      get: {
+        tags: ['User Management'],
+        summary: 'Get user details by ID (Administrator only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'User record' }, 404: { description: 'User not found' } },
+      },
+    },
+    '/users/{id}/role': {
+      patch: {
+        tags: ['User Management'],
+        summary: 'Update or promote user role (Administrator only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['roleCode'],
+                properties: {
+                  roleCode: { type: 'string', enum: ['ADMINISTRATOR', 'OPERATOR', 'CLIENT'], example: 'OPERATOR' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'User role updated' }, 400: { description: 'Cannot revoke own administrator role' } },
+      },
+    },
+    '/users/{id}/status': {
+      patch: {
+        tags: ['User Management'],
+        summary: 'Activate or deactivate user account (Administrator only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['isActive'],
+                properties: {
+                  isActive: { type: 'boolean', example: false },
+                  reason: { type: 'string', example: 'Contract ended' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: 'User status updated' }, 400: { description: 'Cannot deactivate own account' } },
+      },
+    },
   },
 };
