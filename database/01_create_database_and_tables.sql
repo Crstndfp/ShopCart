@@ -283,6 +283,15 @@ GO
 -- 6. ORDERS, ORDER DETAILS, STATUS HISTORY, AND COUPON USAGES (RF-06, RF-07)
 -- ============================================================================
 
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = 'OrderSequence')
+BEGIN
+    CREATE SEQUENCE dbo.OrderSequence
+        AS INT
+        START WITH 1
+        INCREMENT BY 1;
+END
+GO
+
 IF OBJECT_ID(N'dbo.Orders', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Orders (

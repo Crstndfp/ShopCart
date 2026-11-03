@@ -70,7 +70,7 @@ BEGIN
                 (SELECT @FullName AS FullName, @Email AS Email, @RoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), 
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Auth_GetUserByEmail
@@ -94,7 +94,7 @@ BEGIN
     FROM dbo.Users U
     JOIN dbo.ValuesLookup VL ON U.IDRole = VL.IDValue
     WHERE U.Email = @Email;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Auth_GetUserByID
@@ -117,7 +117,7 @@ BEGIN
     FROM dbo.Users U
     JOIN dbo.ValuesLookup VL ON U.IDRole = VL.IDValue
     WHERE U.IDUser = @IDUser;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Auth_SaveRefreshToken
@@ -130,7 +130,7 @@ BEGIN
 
     INSERT INTO dbo.RefreshTokens (IDUser, TokenHash, ExpiresAt, IsRevoked, CreatedAt)
     VALUES (@IDUser, @TokenHash, @ExpiresAt, 0, SYSUTCDATETIME());
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Auth_RotateRefreshToken
@@ -185,7 +185,7 @@ BEGIN
         INSERT INTO dbo.RefreshTokens (IDUser, TokenHash, ExpiresAt, IsRevoked, CreatedAt)
         VALUES (@UserID, @NewTokenHash, @NewExpiresAt, 0, SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Auth_RevokeRefreshToken
@@ -197,43 +197,7 @@ BEGIN
     UPDATE dbo.RefreshTokens 
     SET IsRevoked = 1 
     WHERE TokenHash = @TokenHash;
-END;
-GO
-
-CREATE OR ALTER PROCEDURE dbo.SP_Users_UpdateStatus
-    @IDUser INT,
-    @IsActive BIT,
-    @UpdatedByUserID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SET XACT_ABORT ON;
-
-    DECLARE @PreviousActive BIT;
-    SELECT @PreviousActive = IsActive FROM dbo.Users WHERE IDUser = @IDUser;
-
-    IF @PreviousActive IS NULL
-    BEGIN
-        RAISERROR('USER_NOT_FOUND: User does not exist.', 16, 1);
-        RETURN;
-    END
-
-    BEGIN TRANSACTION;
-        UPDATE dbo.Users 
-        SET IsActive = @IsActive, UpdatedAt = SYSUTCDATETIME()
-        WHERE IDUser = @IDUser;
-
-        -- Record in AuditLog
-        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, PreviousValueJson, NewValueJson, LoggedAt)
-        VALUES (
-            @UpdatedByUserID, 'USERS', 'Users', CAST(@IDUser AS VARCHAR(50)),
-            CASE WHEN @IsActive = 0 THEN 'DEACTIVATE' ELSE 'UPDATE' END,
-            (SELECT @PreviousActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
-            (SELECT @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
-            SYSUTCDATETIME()
-        );
-    COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Addresses_Create
@@ -255,7 +219,7 @@ BEGIN
     VALUES (@IDUser, @Alias, @RecipientName, @AddressLine1, @AddressLine2, @Municipality, @Department, @PostalCode, @ContactPhone, 1);
 
     SET @NewIDAddress = SCOPE_IDENTITY();
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Addresses_ListByUser
@@ -268,7 +232,7 @@ BEGIN
     FROM dbo.Addresses
     WHERE IDUser = @IDUser AND IsActive = 1
     ORDER BY IDAddress DESC;
-END;
+END
 GO
 
 -- ============================================================================
@@ -303,7 +267,7 @@ BEGIN
                 (SELECT @Name AS Name, @Description AS Description FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Categories_List
@@ -317,7 +281,7 @@ BEGIN
     FROM dbo.Categories C
     WHERE (@OnlyActive = 0 OR C.IsActive = 1)
     ORDER BY C.Name ASC;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Categories_Update
@@ -357,7 +321,7 @@ BEGIN
                 (SELECT @Name AS Name, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Products_Create
@@ -389,7 +353,7 @@ BEGIN
                 (SELECT @IDCategory AS IDCategory, @Name AS Name FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Variants_Create
@@ -435,7 +399,7 @@ BEGIN
                 (SELECT @IDProduct AS IDProduct, @SKU AS SKU, @Price AS Price, @InitialStock AS InitialStock FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Products_Deactivate
@@ -467,7 +431,7 @@ BEGIN
                 (SELECT @IDProduct AS IDProduct, @SalesCount AS HistoricalSalesCount FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Products_Update
@@ -510,7 +474,7 @@ BEGIN
                 (SELECT @IDProduct AS IDProduct, @Name AS Name, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Products_GetByID
@@ -550,7 +514,7 @@ BEGIN
     CROSS APPLY dbo.FU_Catalog_AvailableStock(PV.IDVariant) FAS
     WHERE PV.IDProduct = @IDProduct
     ORDER BY PV.IDVariant ASC;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Variants_Update
@@ -594,7 +558,7 @@ BEGIN
                 (SELECT @Price AS Price, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Catalog_SearchProducts
@@ -604,14 +568,16 @@ CREATE OR ALTER PROCEDURE dbo.SP_Catalog_SearchProducts
     @MaxPrice DECIMAL(12,2) = NULL,
     @OnlyInStock BIT = 0,
     @SortBy VARCHAR(30) = 'NAME', -- 'NAME', 'PRICE', 'NEWEST'
-    @SortDir VARCHAR(4) = 'ASC',  -- 'ASC', 'DESC'
+    @SortDir VARCHAR(10) = 'ASC', -- 'ASC', 'DESC'
     @PageNumber INT = 1,
     @PageSize INT = 20
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+    DECLARE @Offset INT = IIF(@PageNumber > 1, (@PageNumber - 1) * @PageSize, 0);
+    DECLARE @NormSortBy VARCHAR(30) = UPPER(LTRIM(RTRIM(ISNULL(@SortBy, 'NAME'))));
+    DECLARE @NormSortDir VARCHAR(10) = UPPER(LTRIM(RTRIM(ISNULL(@SortDir, 'ASC'))));
 
     WITH ProductList AS (
         SELECT 
@@ -644,13 +610,16 @@ BEGIN
     )
     SELECT * FROM CountedList
     ORDER BY 
-        CASE WHEN @SortBy = 'NAME' AND @SortDir = 'ASC' THEN ProductName END ASC,
-        CASE WHEN @SortBy = 'NAME' AND @SortDir = 'DESC' THEN ProductName END DESC,
-        CASE WHEN @SortBy = 'PRICE' AND @SortDir = 'ASC' THEN MinPrice END ASC,
-        CASE WHEN @SortBy = 'PRICE' AND @SortDir = 'DESC' THEN MinPrice END DESC,
-        CASE WHEN @SortBy = 'NEWEST' THEN CreatedAt END DESC
+        IIF(@NormSortBy = 'NAME' AND @NormSortDir = 'ASC', ProductName, NULL) ASC,
+        IIF(@NormSortBy = 'NAME' AND @NormSortDir = 'DESC', ProductName, NULL) DESC,
+        IIF(@NormSortBy = 'PRICE' AND @NormSortDir = 'ASC', MinPrice, NULL) ASC,
+        IIF(@NormSortBy = 'PRICE' AND @NormSortDir = 'DESC', MinPrice, NULL) DESC,
+        IIF(@NormSortBy = 'NEWEST' AND @NormSortDir = 'ASC', CreatedAt, NULL) ASC,
+        IIF(@NormSortBy = 'NEWEST' AND @NormSortDir <> 'ASC', CreatedAt, NULL) DESC,
+        IIF(@NormSortBy NOT IN ('NAME', 'PRICE', 'NEWEST'), ProductName, NULL) ASC,
+        IDProduct ASC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
-END;
+END
 GO
 
 -- ============================================================================
@@ -703,7 +672,7 @@ BEGIN
     BEGIN
         RAISERROR('INVALID_CART_REQUEST: Either User ID or Guest Token must be supplied.', 16, 1);
     END
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Cart_AddItem
@@ -755,7 +724,7 @@ BEGIN
 
         UPDATE dbo.Carts SET LastActivityAt = SYSUTCDATETIME() WHERE IDCart = @IDCart;
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Cart_UpdateItemQuantity
@@ -791,7 +760,7 @@ BEGIN
 
         UPDATE dbo.Carts SET LastActivityAt = SYSUTCDATETIME() WHERE IDCart = @IDCart;
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Cart_RemoveItem
@@ -807,7 +776,7 @@ BEGIN
     UPDATE dbo.Carts 
     SET LastActivityAt = SYSUTCDATETIME() 
     WHERE IDCart = @IDCart;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Cart_Clear
@@ -822,7 +791,7 @@ BEGIN
     UPDATE dbo.Carts 
     SET LastActivityAt = SYSUTCDATETIME() 
     WHERE IDCart = @IDCart;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Cart_GetCartDetails
@@ -865,7 +834,7 @@ BEGIN
     JOIN dbo.Products P ON PV.IDProduct = P.IDProduct
     CROSS APPLY dbo.FU_Catalog_AvailableStock(PV.IDVariant) FAS
     WHERE CI.IDCart = @IDCart;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Cart_MergeGuestCart
@@ -898,7 +867,7 @@ BEGIN
         -- Deactivate guest cart
         UPDATE dbo.Carts SET IsActive = 0, Status = 'CONVERTED' WHERE IDCart = @GuestCartID;
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 -- ============================================================================
@@ -913,57 +882,62 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
+    DECLARE @InitialTranCount INT = @@TRANCOUNT;
+    IF @InitialTranCount = 0
+        BEGIN TRANSACTION;
+
     -- Release previous active reservations for this cart first
     UPDATE dbo.StockReservations
     SET Status = 'CANCELLED'
     WHERE IDCart = @IDCart AND Status = 'ACTIVE';
 
-    BEGIN TRANSACTION;
-        -- Check and acquire pessimistic locks (UPDLOCK, HOLDLOCK) on all variants in cart
-        DECLARE @VariantReservations TABLE (
-            IDVariant INT NOT NULL,
-            Quantity INT NOT NULL,
-            PhysicalStock INT NOT NULL,
-            ActiveReserved INT NOT NULL
-        );
+    -- Check and acquire pessimistic locks (UPDLOCK, HOLDLOCK) on all variants in cart
+    DECLARE @VariantReservations TABLE (
+        IDVariant INT NOT NULL,
+        Quantity INT NOT NULL,
+        PhysicalStock INT NOT NULL,
+        ActiveReserved INT NOT NULL
+    );
 
-        INSERT INTO @VariantReservations (IDVariant, Quantity, PhysicalStock, ActiveReserved)
-        SELECT 
-            PV.IDVariant,
-            CI.Quantity,
-            PV.PhysicalStock,
-            ISNULL(SUM(SR.Quantity), 0) AS ActiveReserved
-        FROM dbo.CartItems CI
-        JOIN dbo.ProductVariants PV WITH (UPDLOCK, HOLDLOCK) ON CI.IDVariant = PV.IDVariant
-        LEFT JOIN dbo.StockReservations SR WITH (UPDLOCK, HOLDLOCK) 
-            ON PV.IDVariant = SR.IDVariant AND SR.Status = 'ACTIVE' AND SR.ExpiresAt > SYSUTCDATETIME()
-        WHERE CI.IDCart = @IDCart
-        GROUP BY PV.IDVariant, CI.Quantity, PV.PhysicalStock;
+    INSERT INTO @VariantReservations (IDVariant, Quantity, PhysicalStock, ActiveReserved)
+    SELECT 
+        PV.IDVariant,
+        CI.Quantity,
+        PV.PhysicalStock,
+        ISNULL(SUM(SR.Quantity), 0) AS ActiveReserved
+    FROM dbo.CartItems CI
+    JOIN dbo.ProductVariants PV WITH (UPDLOCK, HOLDLOCK) ON CI.IDVariant = PV.IDVariant
+    LEFT JOIN dbo.StockReservations SR WITH (UPDLOCK, HOLDLOCK) 
+        ON PV.IDVariant = SR.IDVariant AND SR.Status = 'ACTIVE' AND SR.ExpiresAt > SYSUTCDATETIME()
+    WHERE CI.IDCart = @IDCart
+    GROUP BY PV.IDVariant, CI.Quantity, PV.PhysicalStock;
 
-        -- Verify if any variant exceeds available stock
-        IF EXISTS (
-            SELECT 1 FROM @VariantReservations 
-            WHERE (PhysicalStock - ActiveReserved) < Quantity
-        )
-        BEGIN
+    -- Verify if any variant exceeds available stock
+    IF EXISTS (
+        SELECT 1 FROM @VariantReservations 
+        WHERE (PhysicalStock - ActiveReserved) < Quantity
+    )
+    BEGIN
+        IF @InitialTranCount = 0 AND @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
-            RAISERROR('OVERSOLD_ERROR: One or more products in your cart no longer have enough available stock.', 16, 1);
-            RETURN;
-        END
+        RAISERROR('OVERSOLD_ERROR: One or more products in your cart no longer have enough available stock.', 16, 1);
+        RETURN;
+    END
 
-        -- Create active stock reservation for each item
-        INSERT INTO dbo.StockReservations (IDVariant, IDCart, Quantity, ReservedAt, ExpiresAt, Status)
-        SELECT 
-            IDVariant, 
-            @IDCart, 
-            Quantity, 
-            SYSUTCDATETIME(), 
-            DATEADD(MINUTE, @ReservationMinutes, SYSUTCDATETIME()), 
-            'ACTIVE'
-        FROM @VariantReservations;
+    -- Create active stock reservation for each item
+    INSERT INTO dbo.StockReservations (IDVariant, IDCart, Quantity, ReservedAt, ExpiresAt, Status)
+    SELECT 
+        IDVariant, 
+        @IDCart, 
+        Quantity, 
+        SYSUTCDATETIME(), 
+        DATEADD(MINUTE, @ReservationMinutes, SYSUTCDATETIME()), 
+        'ACTIVE'
+    FROM @VariantReservations;
 
-    COMMIT TRANSACTION;
-END;
+    IF @InitialTranCount = 0
+        COMMIT TRANSACTION;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Inventory_ReleaseExpiredReservations
@@ -977,7 +951,7 @@ BEGIN
     WHERE Status = 'ACTIVE' AND ExpiresAt <= SYSUTCDATETIME();
 
     SET @ReleasedCount = @@ROWCOUNT;
-END;
+END
 GO
 
 -- ============================================================================
@@ -1048,7 +1022,7 @@ BEGIN
         INSERT INTO dbo.Kardex (IDVariant, MovementType, Quantity, PreviousBalance, NewBalance, Reason, IDUser, MovementDate)
         VALUES (
             @IDVariant,
-            CASE WHEN @QuantityChange > 0 THEN 'POSITIVE_ADJUSTMENT' ELSE 'NEGATIVE_ADJUSTMENT' END,
+            IIF(@QuantityChange > 0, 'POSITIVE_ADJUSTMENT', 'NEGATIVE_ADJUSTMENT'),
             ABS(@QuantityChange),
             @OldStock,
             @NewStock,
@@ -1066,7 +1040,7 @@ BEGIN
             SYSUTCDATETIME()
         );
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Inventory_GetKardex
@@ -1113,7 +1087,7 @@ BEGIN
     SELECT * FROM CountedData
     ORDER BY MovementDate DESC, IDKardex DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Inventory_GetStockOverview
@@ -1137,21 +1111,16 @@ BEGIN
             PV.SKU,
             PV.Price,
             PV.PhysicalStock,
-            ISNULL((
-                SELECT SUM(SR.QuantityReserved)
-                FROM dbo.StockReservations SR
-                WHERE SR.IDVariant = PV.IDVariant
-                  AND SR.Status = 'ACTIVE'
-                  AND SR.ExpiresAt > SYSUTCDATETIME()
-            ), 0) AS ReservedStock,
-            dbo.FU_Catalog_AvailableStock(PV.IDVariant) AS AvailableStock,
+            FAS.ReservedQuantity AS ReservedStock,
+            FAS.AvailableStock AS AvailableStock,
             PV.IsActive
         FROM dbo.ProductVariants PV
         JOIN dbo.Products P ON PV.IDProduct = P.IDProduct
         JOIN dbo.Categories C ON P.IDCategory = C.IDCategory
+        CROSS APPLY dbo.FU_Catalog_AvailableStock(PV.IDVariant) FAS
         WHERE (@IDCategory IS NULL OR P.IDCategory = @IDCategory)
           AND (@SearchTerm IS NULL OR P.Name LIKE '%' + @SearchTerm + '%' OR PV.SKU LIKE '%' + @SearchTerm + '%')
-          AND (@LowStockOnly = 0 OR dbo.FU_Catalog_AvailableStock(PV.IDVariant) <= 5)
+          AND (@LowStockOnly = 0 OR FAS.AvailableStock <= 5)
     ),
     CountedData AS (
         SELECT COUNT(1) OVER() AS TotalRows, * FROM StockEntries
@@ -1159,7 +1128,7 @@ BEGIN
     SELECT * FROM CountedData
     ORDER BY ProductName ASC, SKU ASC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
-END;
+END
 GO
 
 -- ============================================================================
@@ -1208,7 +1177,7 @@ BEGIN
                 (SELECT @Code AS Code, @DiscountType AS DiscountType, @DiscountValue AS DiscountValue FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Coupons_ValidateAndPreview
@@ -1225,7 +1194,7 @@ BEGIN
         ValidationStatus,
         CalculatedDiscount
     FROM dbo.FU_Coupons_CalculateDiscount(@CouponCode, @IDUser, @EligibleSubtotal);
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Coupons_List
@@ -1264,7 +1233,7 @@ BEGIN
     SELECT * FROM CountedList
     ORDER BY CreatedAt DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Coupons_GetByID
@@ -1291,7 +1260,7 @@ BEGIN
     FROM dbo.Coupons CP
     LEFT JOIN dbo.Categories C ON CP.IDCategory = C.IDCategory
     WHERE CP.IDCoupon = @IDCoupon;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Coupons_Update
@@ -1335,7 +1304,7 @@ BEGIN
                 (SELECT @DiscountType AS DiscountType, @DiscountValue AS DiscountValue, @IsActive AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Coupons_Deactivate
@@ -1356,7 +1325,7 @@ BEGIN
                 (SELECT @IDCoupon AS IDCoupon, 0 AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 -- ============================================================================
@@ -1408,6 +1377,13 @@ BEGIN
         RETURN; -- Seamless idempotent response
     END
 
+    -- Verify cart is active and belongs to the authenticated user
+    IF NOT EXISTS (SELECT 1 FROM dbo.Carts WHERE IDCart = @IDCart AND IDUser = @IDUser AND Status = 'ACTIVE' AND IsActive = 1)
+    BEGIN
+        RAISERROR('EMPTY_CART: Shopping cart is not active or does not belong to the user.', 16, 1);
+        RETURN;
+    END
+
     -- Verify delivery address belongs to user
     IF NOT EXISTS (SELECT 1 FROM dbo.Addresses WHERE IDAddress = @IDDeliveryAddress AND IDUser = @IDUser AND IsActive = 1)
     BEGIN
@@ -1428,14 +1404,7 @@ BEGIN
         -- ====================================================================
         -- 2. Verify and Lock Active Reservations (UPDLOCK)
         -- ====================================================================
-        IF NOT EXISTS (
-            SELECT 1 FROM dbo.StockReservations WITH (UPDLOCK)
-            WHERE IDCart = @IDCart AND Status = 'ACTIVE' AND ExpiresAt > SYSUTCDATETIME()
-        )
-        BEGIN
-            -- Attempt to reserve stock now
-            EXEC dbo.SP_Inventory_ReserveStock @IDCart = @IDCart, @ReservationMinutes = 15;
-        END
+        EXEC dbo.SP_Inventory_ReserveStock @IDCart = @IDCart, @ReservationMinutes = 15;
 
         -- Calculate gross subtotal from cart items
         DECLARE @GrossTotal DECIMAL(12,2);
@@ -1455,11 +1424,13 @@ BEGIN
         -- 3. Coupon Validation and Concurrency Lock (UPDLOCK, HOLDLOCK)
         -- ====================================================================
         DECLARE @IDCoupon INT = NULL;
+        DECLARE @CouponCategoryID INT = NULL;
+        DECLARE @EligibleSubtotal DECIMAL(12,2) = @GrossTotal;
         DECLARE @DiscountAmount DECIMAL(12,2) = 0.00;
 
         IF @CouponCode IS NOT NULL AND LTRIM(RTRIM(@CouponCode)) <> ''
         BEGIN
-            SELECT @IDCoupon = IDCoupon
+            SELECT @IDCoupon = IDCoupon, @CouponCategoryID = IDCategory
             FROM dbo.Coupons WITH (UPDLOCK, HOLDLOCK)
             WHERE Code = @CouponCode;
 
@@ -1470,11 +1441,20 @@ BEGIN
                 RETURN;
             END
 
+            IF @CouponCategoryID IS NOT NULL
+            BEGIN
+                SELECT @EligibleSubtotal = ISNULL(SUM(CI.Quantity * PV.Price), 0.00)
+                FROM dbo.CartItems CI
+                JOIN dbo.ProductVariants PV ON CI.IDVariant = PV.IDVariant
+                JOIN dbo.Products P ON PV.IDProduct = P.IDProduct
+                WHERE CI.IDCart = @IDCart AND P.IDCategory = @CouponCategoryID;
+            END
+
             DECLARE @ValidationStatus VARCHAR(50);
             SELECT 
                 @ValidationStatus = ValidationStatus,
                 @DiscountAmount = CalculatedDiscount
-            FROM dbo.FU_Coupons_CalculateDiscount(@CouponCode, @IDUser, @GrossTotal);
+            FROM dbo.FU_Coupons_CalculateDiscount(@CouponCode, @IDUser, @EligibleSubtotal);
 
             IF @ValidationStatus <> 'VALID'
             BEGIN
@@ -1562,6 +1542,15 @@ BEGIN
             FROM dbo.ProductVariants WITH (UPDLOCK) 
             WHERE IDVariant = @VariantID;
 
+            IF @PrevBalance < @SoldQty
+            BEGIN
+                CLOSE ItemCursor;
+                DEALLOCATE ItemCursor;
+                ROLLBACK TRANSACTION;
+                RAISERROR('INSUFFICIENT_STOCK: Insufficient physical stock for SKU %s.', 16, 1, @SKU);
+                RETURN;
+            END
+
             UPDATE dbo.ProductVariants
             SET PhysicalStock = PhysicalStock - @SoldQty, UpdatedAt = SYSUTCDATETIME()
             WHERE IDVariant = @VariantID;
@@ -1603,16 +1592,6 @@ BEGIN
         VALUES (@NewIDOrder, NULL, 'PAID', @IDUser, 'Order paid and confirmed successfully', SYSUTCDATETIME());
 
     COMMIT TRANSACTION;
-END;
-GO
-
--- Sequence for Order Numbers
-IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = 'OrderSequence')
-BEGIN
-    CREATE SEQUENCE dbo.OrderSequence
-        AS INT
-        START WITH 1
-        INCREMENT BY 1;
 END
 GO
 
@@ -1641,7 +1620,8 @@ BEGIN
     SET XACT_ABORT ON;
 
     DECLARE @CurrentStatus VARCHAR(30);
-    SELECT @CurrentStatus = Status FROM dbo.Orders WHERE IDOrder = @IDOrder;
+    DECLARE @OrderCouponID INT;
+    SELECT @CurrentStatus = Status, @OrderCouponID = IDCoupon FROM dbo.Orders WHERE IDOrder = @IDOrder;
 
     IF @CurrentStatus IS NULL
     BEGIN
@@ -1670,7 +1650,7 @@ BEGIN
         INSERT INTO dbo.OrderStatusHistory (IDOrder, PreviousStatus, NewStatus, IDUser, Reason, ChangedAt)
         VALUES (@IDOrder, @CurrentStatus, @NewStatus, @IDUser, @Reason, SYSUTCDATETIME());
 
-        -- If cancelled, revert stock and Kardex!
+        -- If cancelled, revert stock, Kardex, and coupon usage!
         IF @NewStatus = 'CANCELLED'
         BEGIN
             DECLARE @VariantID INT, @SoldQty INT;
@@ -1697,6 +1677,14 @@ BEGIN
 
             CLOSE CancelCursor;
             DEALLOCATE CancelCursor;
+
+            IF @OrderCouponID IS NOT NULL
+            BEGIN
+                DELETE FROM dbo.CouponUsages WHERE IDOrder = @IDOrder AND IDCoupon = @OrderCouponID;
+                UPDATE dbo.Coupons
+                SET CurrentUses = IIF(CurrentUses > 0, CurrentUses - 1, 0)
+                WHERE IDCoupon = @OrderCouponID;
+            END
         END
 
         INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, PreviousValueJson, NewValueJson, LoggedAt)
@@ -1705,7 +1693,7 @@ BEGIN
                 (SELECT @NewStatus AS Status FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Orders_ProcessReturn
@@ -1789,7 +1777,7 @@ BEGIN
         SELECT @AllSold = SUM(QuantitySold), @AllReturned = SUM(QuantityReturned)
         FROM dbo.OrderItems WHERE IDOrder = @IDOrder;
 
-        DECLARE @UpdatedOrderStatus VARCHAR(30) = CASE WHEN @AllSold = @AllReturned THEN 'FULLY_RETURNED' ELSE 'PARTIALLY_RETURNED' END;
+        DECLARE @UpdatedOrderStatus VARCHAR(30) = IIF(@AllSold = @AllReturned, 'FULLY_RETURNED', 'PARTIALLY_RETURNED');
 
         UPDATE dbo.Orders SET Status = @UpdatedOrderStatus, UpdatedAt = SYSUTCDATETIME() WHERE IDOrder = @IDOrder;
 
@@ -1797,7 +1785,7 @@ BEGIN
         VALUES (@IDOrder, @OrderStatus, @UpdatedOrderStatus, @IDOperatorUser, 'Return processed: ' + @Reason, SYSUTCDATETIME());
 
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Orders_GetOrderByID
@@ -1865,7 +1853,7 @@ BEGIN
     JOIN dbo.Users U ON OSH.IDUser = U.IDUser
     WHERE OSH.IDOrder = @IDOrder
     ORDER BY OSH.ChangedAt ASC;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Orders_List
@@ -1909,7 +1897,7 @@ BEGIN
     SELECT * FROM CountedList
     ORDER BY CreatedAt DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
-END;
+END
 GO
 
 -- ============================================================================
@@ -1925,7 +1913,7 @@ BEGIN
     SELECT IDConfiguration, ConfigKey, ConfigValue, DataType, Description, IsEditable, UpdatedAt
     FROM dbo.Configurations
     WHERE ConfigKey = @ConfigKey;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Configurations_Update
@@ -1966,7 +1954,7 @@ BEGIN
                 (SELECT @NewValue AS ConfigValue FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Audit_ListLogs
@@ -2008,7 +1996,7 @@ BEGIN
     SELECT * FROM CountedData
     ORDER BY LoggedAt DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
-END;
+END
 GO
 
 -- ============================================================================
@@ -2036,7 +2024,7 @@ BEGIN
     WHERE (@StartDate IS NULL OR SalesDate >= @StartDate)
       AND (@EndDate IS NULL OR SalesDate <= @EndDate)
     ORDER BY SalesDate DESC;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Reports_GetSalesByCategory
@@ -2054,7 +2042,7 @@ BEGIN
         NetCategorySales
     FROM dbo.VW_Dashboard_SalesByCategory
     ORDER BY NetCategorySales DESC;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Reports_GetTopSellingProducts
@@ -2073,7 +2061,7 @@ BEGIN
         NetProductSales
     FROM dbo.VW_Dashboard_TopSellingProducts
     ORDER BY NetUnitsSold DESC, NetProductSales DESC;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Reports_GetAbandonedCarts
@@ -2094,7 +2082,7 @@ BEGIN
         EstimatedCartTotal
     FROM dbo.VW_Dashboard_AbandonedCarts
     ORDER BY LastActivityAt DESC;
-END;
+END
 GO
 
 -- ============================================================================
@@ -2141,7 +2129,7 @@ BEGIN
                 (SELECT @FullName AS FullName, @Email AS Email, @RoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), 
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Users_List
@@ -2180,7 +2168,7 @@ BEGIN
     SELECT * FROM CountedUsers
     ORDER BY CreatedAt DESC
     OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Users_GetByID
@@ -2203,7 +2191,7 @@ BEGIN
     FROM dbo.Users U
     JOIN dbo.ValuesLookup VL ON U.IDRole = VL.IDValue
     WHERE U.IDUser = @IDUser;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Users_UpdateRole
@@ -2248,7 +2236,7 @@ BEGIN
                 (SELECT @NewRoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.SP_Users_UpdateStatus
@@ -2285,10 +2273,11 @@ BEGIN
 
         -- Audit Log
         INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, PreviousValueJson, NewValueJson, LoggedAt)
-        VALUES (@AdminUserID, 'USERS', 'Users', CAST(@IDUser AS VARCHAR(50)), 'UPDATE',
+        VALUES (@AdminUserID, 'USERS', 'Users', CAST(@IDUser AS VARCHAR(50)),
+                IIF(@IsActive = 0, 'DEACTIVATE', 'UPDATE'),
                 (SELECT @CurrentStatus AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 (SELECT @IsActive AS IsActive, @Reason AS Reason FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
                 SYSUTCDATETIME());
     COMMIT TRANSACTION;
-END;
+END
 GO
