@@ -2096,3 +2096,199 @@ BEGIN
     ORDER BY LastActivityAt DESC;
 END;
 GO
+
+-- ============================================================================
+-- 9. USER MANAGEMENT BY ADMINISTRATOR (RF-01)
+-- ============================================================================
+
+CREATE OR ALTER PROCEDURE dbo.SP_Users_CreateByAdmin
+    @RoleCode VARCHAR(50),
+    @FullName NVARCHAR(150),
+    @Email VARCHAR(150),
+    @PasswordHash VARCHAR(255),
+    @PhoneNumber VARCHAR(30) = NULL,
+    @AdminUserID INT,
+    @NewIDUser INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @IDRole INT;
+    SELECT @IDRole = IDValue FROM dbo.ValuesLookup WHERE ValueCategory = 'USER_ROLE' AND Code = @RoleCode AND IsActive = 1;
+
+    IF @IDRole IS NULL
+    BEGIN
+        RAISERROR('INVALID_ROLE: The specified user role does not exist.', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Users WHERE Email = @Email)
+    BEGIN
+        RAISERROR('EMAIL_ALREADY_EXISTS: A user with this email address is already registered.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRANSACTION;
+        INSERT INTO dbo.Users (IDRole, FullName, Email, PasswordHash, PhoneNumber, IsActive, CreatedAt)
+        VALUES (@IDRole, @FullName, @Email, @PasswordHash, @PhoneNumber, 1, SYSUTCDATETIME());
+
+        SET @NewIDUser = SCOPE_IDENTITY();
+
+        -- Audit Log entry
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, NewValueJson, LoggedAt)
+        VALUES (@AdminUserID, 'USERS', 'Users', CAST(@NewIDUser AS VARCHAR(50)), 'CREATE', 
+                (SELECT @FullName AS FullName, @Email AS Email, @RoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER), 
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Users_List
+    @RoleCode VARCHAR(50) = NULL,
+    @SearchQuery NVARCHAR(150) = NULL,
+    @IsActive BIT = NULL,
+    @Page INT = 1,
+    @Limit INT = 20
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (@Page - 1) * @Limit;
+
+    WITH FilteredUsers AS (
+        SELECT 
+            U.IDUser,
+            U.IDRole,
+            VL.Code AS RoleCode,
+            VL.Name AS RoleName,
+            U.FullName,
+            U.Email,
+            U.PhoneNumber,
+            U.IsActive,
+            U.CreatedAt,
+            U.UpdatedAt
+        FROM dbo.Users U
+        JOIN dbo.ValuesLookup VL ON U.IDRole = VL.IDValue
+        WHERE (@RoleCode IS NULL OR VL.Code = @RoleCode)
+          AND (@IsActive IS NULL OR U.IsActive = @IsActive)
+          AND (@SearchQuery IS NULL OR U.FullName LIKE '%' + @SearchQuery + '%' OR U.Email LIKE '%' + @SearchQuery + '%')
+    ),
+    CountedUsers AS (
+        SELECT COUNT(1) OVER() AS TotalCount, * FROM FilteredUsers
+    )
+    SELECT * FROM CountedUsers
+    ORDER BY CreatedAt DESC
+    OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Users_GetByID
+    @IDUser INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        U.IDUser,
+        U.IDRole,
+        VL.Code AS RoleCode,
+        VL.Name AS RoleName,
+        U.FullName,
+        U.Email,
+        U.PhoneNumber,
+        U.IsActive,
+        U.CreatedAt,
+        U.UpdatedAt
+    FROM dbo.Users U
+    JOIN dbo.ValuesLookup VL ON U.IDRole = VL.IDValue
+    WHERE U.IDUser = @IDUser;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Users_UpdateRole
+    @IDUser INT,
+    @NewRoleCode VARCHAR(50),
+    @AdminUserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @NewIDRole INT;
+    SELECT @NewIDRole = IDValue FROM dbo.ValuesLookup WHERE ValueCategory = 'USER_ROLE' AND Code = @NewRoleCode AND IsActive = 1;
+
+    IF @NewIDRole IS NULL
+    BEGIN
+        RAISERROR('INVALID_ROLE: The specified user role does not exist.', 16, 1);
+        RETURN;
+    END
+
+    DECLARE @OldRoleCode VARCHAR(50);
+    SELECT @OldRoleCode = VL.Code
+    FROM dbo.Users U
+    JOIN dbo.ValuesLookup VL ON U.IDRole = VL.IDValue
+    WHERE U.IDUser = @IDUser;
+
+    IF @OldRoleCode IS NULL
+    BEGIN
+        RAISERROR('USER_NOT_FOUND: User does not exist.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.Users
+        SET IDRole = @NewIDRole, UpdatedAt = SYSUTCDATETIME()
+        WHERE IDUser = @IDUser;
+
+        -- Audit Log
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, PreviousValueJson, NewValueJson, LoggedAt)
+        VALUES (@AdminUserID, 'USERS', 'Users', CAST(@IDUser AS VARCHAR(50)), 'UPDATE',
+                (SELECT @OldRoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                (SELECT @NewRoleCode AS RoleCode FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Users_UpdateStatus
+    @IDUser INT,
+    @IsActive BIT,
+    @Reason NVARCHAR(255) = NULL,
+    @AdminUserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @CurrentStatus BIT;
+    SELECT @CurrentStatus = IsActive FROM dbo.Users WHERE IDUser = @IDUser;
+
+    IF @CurrentStatus IS NULL
+    BEGIN
+        RAISERROR('USER_NOT_FOUND: User does not exist.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRANSACTION;
+        UPDATE dbo.Users
+        SET IsActive = @IsActive, UpdatedAt = SYSUTCDATETIME()
+        WHERE IDUser = @IDUser;
+
+        -- If deactivated, revoke all active refresh tokens immediately
+        IF @IsActive = 0
+        BEGIN
+            UPDATE dbo.RefreshTokens
+            SET IsRevoked = 1
+            WHERE IDUser = @IDUser AND IsRevoked = 0;
+        END
+
+        -- Audit Log
+        INSERT INTO dbo.AuditLog (IDUser, Module, EntityName, EntityID, ActionType, PreviousValueJson, NewValueJson, LoggedAt)
+        VALUES (@AdminUserID, 'USERS', 'Users', CAST(@IDUser AS VARCHAR(50)), 'UPDATE',
+                (SELECT @CurrentStatus AS IsActive FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                (SELECT @IsActive AS IsActive, @Reason AS Reason FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                SYSUTCDATETIME());
+    COMMIT TRANSACTION;
+END;
+GO
