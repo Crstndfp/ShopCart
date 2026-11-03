@@ -1,6 +1,7 @@
 import { OrderDal, OrderDetailResult, OrderListItem } from '../dal/order.dal.js';
 import { CheckoutDto, AdvanceOrderStatusDto, ProcessReturnDto, OrderQueryDto } from '../dtos/order.dto.js';
 import { NotFoundError, BadRequestError, ForbiddenError } from '../errors/app-error.js';
+import { logger } from '../utils/logger.util.js';
 
 const STAFF_ROLES = ['ADMINISTRATOR', 'OPERATOR', 'INVENTORY_MANAGER'];
 
@@ -31,6 +32,10 @@ export class OrderService {
         throw new NotFoundError(`Order ${idOrder} created but details could not be retrieved.`);
       }
 
+      logger.info(
+        `Checkout succeeded: Order #${orderDetail.order.OrderNumber} (ID: ${idOrder}) created for User ${userId}. Total: Q${orderDetail.order.GrandTotal}`
+      );
+
       return orderDetail;
     } catch (error: any) {
       const msg = error.message || '';
@@ -58,6 +63,9 @@ export class OrderService {
     try {
       await this.dal.advanceStatus(orderId, dto.status, dto.reason ?? null, userId);
       const updated = await this.dal.getOrderById(orderId, userId, true);
+      logger.info(`Order #${orderId} status transitioned to '${dto.status}' by User ${userId}`, {
+        reason: dto.reason,
+      });
       return updated!;
     } catch (error: any) {
       const msg = error.message || '';
@@ -86,6 +94,10 @@ export class OrderService {
       );
 
       const order = await this.dal.getOrderById(orderId, operatorUserId, true);
+      logger.info(
+        `Return #${idReturn} processed for Order #${orderId}, item ${dto.idOrderItem} (Qty: ${dto.quantity}) by Operator ${operatorUserId}`,
+        { reason: dto.reason }
+      );
       return { idReturn, order: order! };
     } catch (error: any) {
       const msg = error.message || '';

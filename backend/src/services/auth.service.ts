@@ -3,6 +3,7 @@ import { AuthDal } from '../dal/auth.dal.js';
 import { RegisterDto, LoginDto } from '../dtos/auth.dto.js';
 import { ConflictError, UnauthorizedError } from '../errors/app-error.js';
 import { env } from '../config/env.js';
+import { logger } from '../utils/logger.util.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -46,6 +47,8 @@ export class AuthService {
       dto.phoneNumber
     );
 
+    logger.info(`User registered successfully: '${dto.email}' (ID: ${idUser})`);
+
     return {
       idUser,
       message: 'User registered successfully',
@@ -56,12 +59,14 @@ export class AuthService {
     // 1. Find user by email
     const user = await this.authDal.getUserByEmail(dto.email);
     if (!user || user.IsActive === false) {
+      logger.warn(`Login failed: user '${dto.email}' not found or inactive`);
       throw new UnauthorizedError('Invalid email or password.');
     }
 
     // 2. Verify password with Argon2
     const isPasswordValid = await argon2.verify(user.PasswordHash, dto.password);
     if (!isPasswordValid) {
+      logger.warn(`Login failed: incorrect password for user '${dto.email}'`);
       throw new UnauthorizedError('Invalid email or password.');
     }
 
@@ -80,6 +85,8 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
     await this.authDal.saveRefreshToken(user.IDUser, tokenHash, expiresAt);
+
+    logger.info(`User '${user.Email}' authenticated successfully (Role: ${user.RoleCode}, ID: ${user.IDUser})`);
 
     return {
       accessToken,
@@ -100,6 +107,7 @@ export class AuthService {
     // Fetch user details to generate a complete access token
     const user = await this.authDal.getUserByID(rotated.idUser);
     if (!user || user.IsActive === false) {
+      logger.warn(`Token rotation failed: user ID ${rotated.idUser} is inactive or disabled`);
       throw new UnauthorizedError('User account is inactive or disabled.');
     }
 
@@ -110,6 +118,8 @@ export class AuthService {
       role: user.RoleCode,
     });
 
+    logger.info(`Refresh token rotated successfully for user ID ${user.IDUser} (${user.Email})`);
+
     return {
       accessToken,
       refreshToken: newRawRefreshToken,
@@ -119,5 +129,6 @@ export class AuthService {
   async logout(rawRefreshToken: string): Promise<void> {
     const tokenHash = hashRefreshToken(rawRefreshToken);
     await this.authDal.revokeRefreshToken(tokenHash);
+    logger.info('Session refresh token revoked successfully upon logout');
   }
 }
