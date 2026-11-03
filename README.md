@@ -73,17 +73,72 @@ npm run dev
 
 ---
 
-## 3. Credenciales de Prueba (Datos Semilla)
+## 3. Tipos de Usuarios, Roles y Matriz de Permisos (RF-01)
 
-Todos los usuarios de prueba han sido inicializados con la contraseña por defecto: **`Password123!`**
+El sistema implementa un control de acceso basado en roles (**RBAC**) centralizado en la tabla `dbo.ValuesLookup` bajo la categoría `USER_ROLE` y custodiado por el middleware de autorización `requireRoles(...)` en el backend.
 
-| Rol | Correo Electrónico | Contraseña | Alcance y Permisos |
+### 3.1 Roles del Sistema
+
+| Rol (`Code`) | Nombre | Alcance y Responsabilidades |
+| :--- | :--- | :--- |
+| **`ADMINISTRATOR`** | Administrador | **Control total del sistema:** Creación y modificación de categorías, productos, variantes y precios; gestión de cupones; ajustes globales del sistema (IVA, tiempos de reserva); auditoría transversal (`AuditLog`) y reportes financieros/analíticos. |
+| **`OPERATOR`** | Operador de Bodega / Inventario | **Operación logística:** Carga de mercancía y ajustes de stock en Kardex (`POST /api/v1/inventory/adjustments`), consulta de saldos y movimientos (`GET /api/v1/inventory/kardex`), avance en la máquina de estados de pedidos (`PATCH /api/v1/orders/:id/status`) y procesamiento de devoluciones (`POST /api/v1/orders/:id/returns`). |
+| **`CLIENT`** | Cliente B2C | **Navegación y compras:** Consulta de productos y categorías activas, gestión de carrito y reservas, aplicación de cupones en checkout, gestión de libreta de direcciones y seguimiento exclusivo de sus propios pedidos. |
+
+### 3.2 Credenciales de Prueba Precargadas (Datos Semilla)
+
+Todos los usuarios de prueba han sido inicializados en `database/05_seed_data.sql` con la contraseña por defecto: **`Password123!`**
+
+| Rol | Correo Electrónico | Contraseña | Alcance Principal |
 | :--- | :--- | :--- | :--- |
-| **Administrador** | `admin@shopcart.gt` | `Password123!` | Acceso total: catálogo, precios, cupones, usuarios, bitácora de auditoría y reportes. |
-| **Operador** | `operator@shopcart.gt` | `Password123!` | Preparación y despacho de pedidos, devoluciones y ajustes de inventario. |
+| **Administrador** | `admin@shopcart.gt` | `Password123!` | Acceso total: catálogo, precios, cupones, parámetros, auditoría y reportes. |
+| **Operador** | `operator@shopcart.gt` | `Password123!` | Preparación y despacho de pedidos, devoluciones y ajustes de inventario/kardex. |
 | **Cliente** | `cliente@shopcart.gt` | `Password123!` | Navegación, carrito, checkout, gestión de direcciones y consulta de sus propios pedidos. |
 
-### Cupones Promocionales Precargados:
+### 3.3 Matriz de Endpoints y Permisos por Rol
+
+| Módulo / Funcionalidad | Endpoint HTTP | `CLIENT` | `OPERATOR` | `ADMINISTRATOR` |
+| :--- | :--- | :---: | :---: | :---: |
+| **Autenticación Pública** | `POST /api/v1/auth/login`, `POST /api/v1/auth/register`, `POST /api/v1/auth/refresh` | ✅ | ✅ | ✅ |
+| **Exploración de Catálogo** | `GET /api/v1/catalog/products`, `GET /api/v1/catalog/categories` | ✅ | ✅ | ✅ |
+| **Carrito y Checkout** | `POST /api/v1/cart/items`, `POST /api/v1/orders/checkout` | ✅ | ❌ | ❌ |
+| **Libreta de Direcciones** | `/api/v1/addresses/*` | ✅ | ❌ | ❌ |
+| **Mis Pedidos (Historial propio)** | `GET /api/v1/orders`, `GET /api/v1/orders/:id` | ✅ *(propios)* | ✅ *(todos)* | ✅ *(todos)* |
+| **Ajustes de Stock e Ingresos a Kardex** | `POST /api/v1/inventory/adjustments` | ❌ | ✅ | ✅ |
+| **Consulta de Kardex y Saldos** | `GET /api/v1/inventory/kardex`, `GET /api/v1/inventory/stock` | ❌ | ✅ | ✅ |
+| **Despacho y Estados de Orden** | `PATCH /api/v1/orders/:id/status` | ❌ | ✅ | ✅ |
+| **Procesar Devoluciones** | `POST /api/v1/orders/:id/returns` | ❌ | ✅ | ✅ |
+| **Crear/Editar Productos y Categorías** | `POST/PUT /api/v1/catalog/*` | ❌ | ❌ | ✅ |
+| **Gestión de Cupones** | `POST/PUT/DELETE /api/v1/coupons/*` | ❌ | ❌ | ✅ |
+| **Bitácora de Auditoría y Parámetros** | `/api/v1/reports/audit-logs`, `/api/v1/configurations` | ❌ | ❌ | ✅ |
+
+### 3.4 Creación y Gestión de Usuarios
+
+- **Clientes (B2C):** Se registran de forma autónoma mediante `POST /api/v1/auth/register`. Por diseño de seguridad, este endpoint asigna invariablemente el rol `CLIENT` para impedir cualquier vector de escalamiento de privilegios desde la web pública.
+- **Operadores y Administradores:** Se crean en base de datos mediante el Stored Procedure `dbo.SP_Auth_RegisterUser` indicando `@RoleCode = 'OPERATOR'` o `'ADMINISTRATOR'`, o bien promoviendo un usuario existente:
+
+```sql
+USE ShopCartDB;
+GO
+
+-- 1. Crear un nuevo Operador de Bodega / Kardex
+DECLARE @NewID INT;
+EXEC dbo.SP_Auth_RegisterUser 
+    @RoleCode = 'OPERATOR',
+    @FullName = 'Marcos Bodeguero',
+    @Email = 'marcos.kardex@shopcart.gt',
+    @PasswordHash = '$2a$12$L7pYjZcMv6QYpU2d6B4pueeS8aU07a6s57L1jU21e9bW3aX4dY76q', -- 'Password123!'
+    @PhoneNumber = '+502 4444-2222',
+    @NewIDUser = @NewID OUTPUT;
+
+-- 2. Promover un usuario existente a Operador
+UPDATE dbo.Users 
+SET IDRole = (SELECT IDValue FROM dbo.ValuesLookup WHERE ValueCategory = 'USER_ROLE' AND Code = 'OPERATOR'),
+    UpdatedAt = SYSUTCDATETIME()
+WHERE Email = 'usuario@shopcart.gt';
+```
+
+### 3.5 Cupones Promocionales Precargados
 - **`BIENVENIDA10`**: 10% de descuento en compras mayores a Q 200.00 (límite de 100 usos en total, 1 uso por cliente).
 - **`PENTANDRA50`**: Q 50.00 de descuento fijo en compras mayores a Q 300.00 (límite de 50 usos en total, hasta 2 usos por cliente).
 
