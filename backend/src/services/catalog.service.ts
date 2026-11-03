@@ -9,6 +9,7 @@ import {
   SearchProductsQueryDto,
 } from '../dtos/catalog.dto.js';
 import { NotFoundError } from '../errors/app-error.js';
+import { logger } from '../utils/logger.util.js';
 
 export class CatalogService {
   private dal = new CatalogDal();
@@ -23,6 +24,7 @@ export class CatalogService {
       dto.description,
       userId
     );
+    logger.info(`Category created: '${dto.name}' (ID: ${idCategory}) by User ${userId}`);
     return { idCategory, message: 'Category created successfully' };
   }
 
@@ -35,6 +37,7 @@ export class CatalogService {
       dto.isActive,
       userId
     );
+    logger.info(`Category updated: ID ${idCategory} by User ${userId}`);
     return { idCategory, message: 'Category updated successfully' };
   }
 
@@ -53,6 +56,7 @@ export class CatalogService {
       dto.mainImageUrl,
       userId
     );
+    logger.info(`Product created: '${dto.name}' (ID: ${idProduct}, Category: ${dto.categoryId}) by User ${userId}`);
     return { idProduct, message: 'Product created successfully' };
   }
 
@@ -66,11 +70,13 @@ export class CatalogService {
       dto.isActive,
       userId
     );
+    logger.info(`Product updated: ID ${idProduct} by User ${userId}`);
     return { idProduct, message: 'Product updated successfully' };
   }
 
   async deactivateProduct(idProduct: number, userId: number) {
     await this.dal.deactivateProduct(idProduct, userId);
+    logger.info(`Product deactivated: ID ${idProduct} by User ${userId}`);
     return { idProduct, message: 'Product deactivated successfully' };
   }
 
@@ -120,12 +126,14 @@ export class CatalogService {
       dto.initialStock,
       userId
     );
+    logger.info(`Variant created: SKU='${dto.sku}' (ID: ${idVariant}, Product: ${idProduct}, Stock: ${dto.initialStock}, Price: ${dto.price}) by User ${userId}`);
     return { idVariant, idProduct, message: 'Product variant created successfully' };
   }
 
   async updateVariant(idVariant: number, dto: UpdateVariantDto, userId: number) {
     const attributesJson = JSON.stringify(dto.attributes);
     await this.dal.updateVariant(idVariant, attributesJson, dto.price, dto.isActive, userId);
+    logger.info(`Variant updated: ID ${idVariant} by User ${userId}`);
     return { idVariant, message: 'Product variant updated successfully' };
   }
 }
