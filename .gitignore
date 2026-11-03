@@ -57,6 +57,14 @@ out/
 .DS_Store
 Thumbs.db
 
+# AI Assistants, Editor configurations & Agent rules
+.gemini/
+.claude/
+.cursor/
+.windsurf/
+rules.md
+*.rules
+
 # Database backups / local files
 *.bak
 *.mdf
