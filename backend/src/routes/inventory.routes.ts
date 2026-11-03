@@ -7,8 +7,8 @@ import { adjustStockSchema, kardexQuerySchema, stockQuerySchema } from '../dtos/
 const router = Router();
 const controller = new InventoryController();
 
-// Protected for Administrator and Inventory Manager
-router.use(authenticateJwt, requireRoles('ADMINISTRATOR', 'INVENTORY_MANAGER'));
+// Protected for Administrator, Operator, and Inventory Manager
+router.use(authenticateJwt, requireRoles('ADMINISTRATOR', 'OPERATOR', 'INVENTORY_MANAGER'));
 
 router.post('/adjustments', validateBody(adjustStockSchema), controller.adjustStock);
 router.get('/kardex', validateQuery(kardexQuerySchema), controller.getKardex);
