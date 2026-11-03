@@ -16,6 +16,21 @@ GO
 -- 1. AUTHENTICATION & USERS MODULE (RF-01)
 -- ============================================================================
 
+-- ============================================================================
+-- Procedure: dbo.SP_Auth_RegisterUser
+-- Module: RF-01 (Authentication & Users)
+-- Description: Registers a new user with role resolution and audit logging.
+-- Parameters:
+--   @RoleCode VARCHAR(50): Role code ('CLIENT', 'ADMINISTRATOR', etc.)
+--   @FullName NVARCHAR(150): Full name of the user
+--   @Email VARCHAR(150): Unique email address
+--   @PasswordHash VARCHAR(255): Argon2id password hash
+--   @PhoneNumber VARCHAR(30) NULL: Optional contact phone
+--   @NewIDUser INT OUTPUT: Generated User ID
+-- Throws:
+--   INVALID_ROLE (16, 1)
+--   EMAIL_ALREADY_EXISTS (16, 1)
+-- ============================================================================
 CREATE OR ALTER PROCEDURE dbo.SP_Auth_RegisterUser
     @RoleCode VARCHAR(50),
     @FullName NVARCHAR(150),
@@ -965,6 +980,22 @@ BEGIN
 END;
 GO
 
+-- ============================================================================
+-- Procedure: dbo.SP_Inventory_AdjustStockManual
+-- Module: RF-03 (Inventory Adjustments & Kardex Audit)
+-- Description: Performs positive or negative manual stock adjustment with mandatory justification.
+--              Guarantees non-negative stock balance and audits entry in Kardex ledger.
+-- Parameters:
+--   @IDVariant INT: Product variant ID
+--   @QuantityChange INT: Quantity to adjust (positive or negative, non-zero)
+--   @Reason NVARCHAR(255): Mandatory justification string
+--   @IDUser INT: Administrator or Inventory Manager user ID
+-- Throws:
+--   INVALID_QUANTITY (16, 1)
+--   MANDATORY_REASON (16, 1)
+--   VARIANT_NOT_FOUND (16, 1)
+--   NEGATIVE_STOCK_ERROR (16, 1)
+-- ============================================================================
 CREATE OR ALTER PROCEDURE dbo.SP_Inventory_AdjustStockManual
     @IDVariant INT,
     @QuantityChange INT, -- Positive for increase, negative for decrease
@@ -1332,6 +1363,26 @@ GO
 -- 6. ORDERS, CHECKOUT & RETURNS (RF-06, RF-07) - STRICT ATOMICITY
 -- ============================================================================
 
+-- ============================================================================
+-- Procedure: dbo.SP_Orders_CreateOrder
+-- Module: RF-06 (Checkout & Atomic Orders)
+-- Description: Creates an order atomically under a serializable transaction.
+--              Enforces idempotency, locks & deducts physical stock with UPDLOCK,
+--              writes Kardex SALE_EXIT entries, applies coupons, and transitions cart.
+-- Parameters:
+--   @IDUser INT: Authenticated customer ID
+--   @IDCart INT: Active cart ID to convert
+--   @IDDeliveryAddress INT: User delivery address ID
+--   @IdempotencyKey VARCHAR(100): Unique client idempotency key
+--   @CouponCode VARCHAR(50) NULL: Optional coupon code
+--   @NewIDOrder INT OUTPUT: Generated Order ID
+--   @GeneratedOrderNumber VARCHAR(30) OUTPUT: Formatted order number (ORD-YYYY-XXXXXX)
+-- Throws:
+--   INVALID_ADDRESS (16, 1)
+--   EMPTY_CART (16, 1)
+--   INSUFFICIENT_STOCK (16, 1)
+--   INVALID_COUPON / COUPON_REJECTED (16, 1)
+-- ============================================================================
 CREATE OR ALTER PROCEDURE dbo.SP_Orders_CreateOrder
     @IDUser INT,
     @IDCart INT,
@@ -1565,6 +1616,20 @@ BEGIN
 END
 GO
 
+-- ============================================================================
+-- Procedure: dbo.SP_Orders_AdvanceStatus
+-- Module: RF-07 (Order State Machine & Lifecycle)
+-- Description: Transitions order status adhering strictly to the allowed state machine.
+--              Reverts physical stock and registers Kardex POSITIVE_ADJUSTMENT if cancelled.
+-- Parameters:
+--   @IDOrder INT: Order ID to transition
+--   @NewStatus VARCHAR(30): Target status (IN_PREPARATION, DISPATCHED, DELIVERED, CANCELLED)
+--   @Reason NVARCHAR(255) NULL: Optional transition or cancellation reason
+--   @IDUser INT: Operator or Administrator executing transition
+-- Throws:
+--   ORDER_NOT_FOUND (16, 1)
+--   INVALID_STATUS_TRANSITION (16, 1)
+-- ============================================================================
 CREATE OR ALTER PROCEDURE dbo.SP_Orders_AdvanceStatus
     @IDOrder INT,
     @NewStatus VARCHAR(30),

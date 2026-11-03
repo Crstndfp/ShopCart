@@ -17,6 +17,7 @@ import auditRoutes from './routes/audit.routes.js';
 import configurationRoutes from './routes/configuration.routes.js';
 import { notFoundHandler } from './middlewares/not-found.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
+import { requestLogger } from './middlewares/logger.middleware.js';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use(
 );
 app.use(cors({ origin: env.CORS_ORIGIN }));
 app.use(express.json());
+app.use(requestLogger);
 
 // 2. Swagger UI Documentation
 app.use(
