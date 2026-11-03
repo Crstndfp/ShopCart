@@ -66,9 +66,11 @@ GO
 MERGE INTO dbo.Configurations AS Target
 USING (VALUES
     ('SISTEMA_IVA_PORCENTAJE', '0.12', 'DECIMAL', 'Value Added Tax (IVA) rate (12% included in sales price)', 1),
+    ('IVA_TAX_PERCENTAGE', '12.00', 'DECIMAL', 'Value Added Tax (IVA) percentage (12% included in sales price)', 1),
     ('SISTEMA_MONEDA_ISO', 'GTQ', 'TEXT', 'Official currency ISO code (Guatemalan Quetzales)', 0),
     ('INVENTARIO_RESERVA_MINUTOS', '15', 'INTEGER', 'Checkout stock reservation timeout in minutes', 1),
     ('CARRITO_ABANDONADO_HORAS', '24', 'INTEGER', 'Inactivity threshold in hours to classify a cart as abandoned', 1),
+    ('CART_ABANDONED_HOURS', '24', 'INTEGER', 'Inactivity threshold in hours to classify a cart as abandoned', 1),
     ('AUTH_ACCESS_TOKEN_MINUTOS', '15', 'INTEGER', 'JWT access token lifespan in minutes', 1),
     ('AUTH_REFRESH_TOKEN_DIAS', '7', 'INTEGER', 'Rotating refresh token lifespan in days', 1)
 ) AS Source (ConfigKey, ConfigValue, DataType, Description, IsEditable)

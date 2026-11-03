@@ -61,8 +61,11 @@ JOIN dbo.Products P ON C.IDCategory = P.IDCategory
 JOIN dbo.ProductVariants PV ON P.IDProduct = PV.IDProduct
 JOIN dbo.OrderItems OI ON PV.IDVariant = OI.IDVariant
 JOIN dbo.Orders O ON OI.IDOrder = O.IDOrder
-LEFT JOIN dbo.Returns R ON O.IDOrder = R.IDOrder
-LEFT JOIN dbo.ReturnItems RI ON R.IDReturn = RI.IDReturn AND OI.IDOrderItem = RI.IDOrderItem
+LEFT JOIN (
+    SELECT IDOrderItem, SUM(RefundedAmount) AS RefundedAmount
+    FROM dbo.ReturnItems
+    GROUP BY IDOrderItem
+) RI ON OI.IDOrderItem = RI.IDOrderItem
 WHERE O.Status IN ('PAID', 'IN_PREPARATION', 'DISPATCHED', 'DELIVERED', 'PARTIALLY_RETURNED')
 GROUP BY C.IDCategory, C.Name;
 GO
@@ -86,8 +89,11 @@ JOIN dbo.Categories C ON P.IDCategory = C.IDCategory
 JOIN dbo.ProductVariants PV ON P.IDProduct = PV.IDProduct
 JOIN dbo.OrderItems OI ON PV.IDVariant = OI.IDVariant
 JOIN dbo.Orders O ON OI.IDOrder = O.IDOrder
-LEFT JOIN dbo.Returns R ON O.IDOrder = R.IDOrder
-LEFT JOIN dbo.ReturnItems RI ON R.IDReturn = RI.IDReturn AND OI.IDOrderItem = RI.IDOrderItem
+LEFT JOIN (
+    SELECT IDOrderItem, SUM(RefundedAmount) AS RefundedAmount
+    FROM dbo.ReturnItems
+    GROUP BY IDOrderItem
+) RI ON OI.IDOrderItem = RI.IDOrderItem
 WHERE O.Status IN ('PAID', 'IN_PREPARATION', 'DISPATCHED', 'DELIVERED', 'PARTIALLY_RETURNED')
 GROUP BY P.IDProduct, P.Name, C.Name, PV.IDVariant, PV.SKU;
 GO
@@ -148,11 +154,11 @@ JOIN dbo.CartItems CI ON C.IDCart = CI.IDCart
 JOIN dbo.ProductVariants PV ON CI.IDVariant = PV.IDVariant
 WHERE C.IsActive = 1
   AND C.Status = 'ACTIVE'
-  AND DATEDIFF(HOUR, C.LastActivityAt, SYSUTCDATETIME()) >= (
-      SELECT ISNULL(TRY_CAST(ConfigValue AS INT), 24)
+  AND DATEDIFF(HOUR, C.LastActivityAt, SYSUTCDATETIME()) >= ISNULL((
+      SELECT TOP 1 TRY_CAST(ConfigValue AS INT)
       FROM dbo.Configurations
-      WHERE ConfigKey = 'CART_ABANDONED_HOURS'
-  )
+      WHERE ConfigKey IN ('CART_ABANDONED_HOURS', 'CARRITO_ABANDONADO_HORAS')
+  ), 24)
 GROUP BY 
     C.IDCart,
     C.IDUser,

@@ -35,11 +35,7 @@ RETURN (
         PV.SKU,
         PV.PhysicalStock,
         AR.ReservedQuantity,
-        CASE 
-            WHEN (PV.PhysicalStock - AR.ReservedQuantity) > 0 
-            THEN (PV.PhysicalStock - AR.ReservedQuantity)
-            ELSE 0 
-        END AS AvailableStock
+        IIF((PV.PhysicalStock - AR.ReservedQuantity) > 0, (PV.PhysicalStock - AR.ReservedQuantity), 0) AS AvailableStock
     FROM dbo.ProductVariants PV
     CROSS JOIN ActiveReservations AR
     WHERE PV.IDVariant = @IDVariant
@@ -60,8 +56,8 @@ AS
 RETURN (
     SELECT 
         @GrossTotal AS GrossTotal,
-        ROUND(@GrossTotal / 1.12, 2) AS NetSubtotal,
-        ROUND(@GrossTotal - (@GrossTotal / 1.12), 2) AS IVATaxAmount
+        CAST(ROUND(@GrossTotal / 1.12, 2) AS DECIMAL(12,2)) AS NetSubtotal,
+        CAST(@GrossTotal - ROUND(@GrossTotal / 1.12, 2) AS DECIMAL(12,2)) AS IVATaxAmount
 );
 GO
 
@@ -97,37 +93,39 @@ RETURN (
     )
     SELECT 
         CD.IDCoupon,
-        CD.Code,
-        CASE 
-            WHEN CD.IDCoupon IS NULL THEN 'COUPON_NOT_FOUND'
-            WHEN CD.IsActive = 0 THEN 'COUPON_INACTIVE'
-            WHEN SYSUTCDATETIME() < CD.StartDate THEN 'COUPON_NOT_YET_VALID'
-            WHEN SYSUTCDATETIME() > CD.EndDate THEN 'COUPON_EXPIRED'
-            WHEN CD.CurrentUses >= CD.MaxTotalUses THEN 'COUPON_EXHAUSTED'
-            WHEN CD.ClientUsesCount >= CD.MaxUsesPerClient THEN 'COUPON_MAX_CLIENT_USES_REACHED'
-            WHEN @EligibleSubtotal < CD.MinPurchaseAmount THEN 'COUPON_MIN_PURCHASE_NOT_MET'
-            ELSE 'VALID'
-        END AS ValidationStatus,
-        CASE 
-            WHEN CD.IDCoupon IS NOT NULL 
-                 AND CD.IsActive = 1 
-                 AND SYSUTCDATETIME() BETWEEN CD.StartDate AND CD.EndDate
-                 AND CD.CurrentUses < CD.MaxTotalUses
-                 AND CD.ClientUsesCount < CD.MaxUsesPerClient
-                 AND @EligibleSubtotal >= CD.MinPurchaseAmount
-            THEN 
-                CASE 
-                    WHEN CD.DiscountType = 'PERCENTAGE' 
-                    THEN ROUND((@EligibleSubtotal * (CD.DiscountValue / 100.0)), 2)
-                    WHEN CD.DiscountType = 'FIXED_AMOUNT'
-                    THEN CASE 
-                            WHEN CD.DiscountValue > @EligibleSubtotal THEN @EligibleSubtotal 
-                            ELSE CD.DiscountValue 
-                         END
-                    ELSE 0.00
-                END
-            ELSE 0.00
-        END AS CalculatedDiscount
-    FROM CouponData CD
+        ISNULL(CD.Code, R.RequestedCode) AS Code,
+        IIF(CD.IDCoupon IS NULL, 'COUPON_NOT_FOUND',
+            IIF(CD.IsActive = 0, 'COUPON_INACTIVE',
+                IIF(SYSUTCDATETIME() < CD.StartDate, 'COUPON_NOT_YET_VALID',
+                    IIF(SYSUTCDATETIME() > CD.EndDate, 'COUPON_EXPIRED',
+                        IIF(CD.CurrentUses >= CD.MaxTotalUses, 'COUPON_EXHAUSTED',
+                            IIF(CD.ClientUsesCount >= CD.MaxUsesPerClient, 'COUPON_MAX_CLIENT_USES_REACHED',
+                                IIF(@EligibleSubtotal < CD.MinPurchaseAmount, 'COUPON_MIN_PURCHASE_NOT_MET', 'VALID')
+                            )
+                        )
+                    )
+                )
+            )
+        ) AS ValidationStatus,
+        CAST(
+            IIF(
+                CD.IDCoupon IS NOT NULL 
+                AND CD.IsActive = 1 
+                AND SYSUTCDATETIME() BETWEEN CD.StartDate AND CD.EndDate
+                AND CD.CurrentUses < CD.MaxTotalUses
+                AND CD.ClientUsesCount < CD.MaxUsesPerClient
+                AND @EligibleSubtotal >= CD.MinPurchaseAmount,
+                IIF(CD.DiscountType = 'PERCENTAGE',
+                    ROUND((@EligibleSubtotal * (CD.DiscountValue / 100.0)), 2),
+                    IIF(CD.DiscountType = 'FIXED_AMOUNT',
+                        IIF(CD.DiscountValue > @EligibleSubtotal, @EligibleSubtotal, CD.DiscountValue),
+                        0.00
+                    )
+                ),
+                0.00
+            ) AS DECIMAL(12,2)
+        ) AS CalculatedDiscount
+    FROM (SELECT @CouponCode AS RequestedCode) R
+    LEFT JOIN CouponData CD ON 1 = 1
 );
 GO
