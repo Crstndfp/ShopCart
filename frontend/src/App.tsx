@@ -1,164 +1,197 @@
-import { useState } from 'react';
-import { ShoppingCart, ShieldCheck, Palette, Sun, Moon, Monitor } from 'lucide-react';
-import { SHOPCART_PALETTE, applyThemeMode, type ThemeMode } from './theme/palette.js';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ProtectedRoute } from './components/auth/ProtectedRoute.js';
+import { AppLayout } from './components/layout/AppLayout.js';
+import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { DesignSystemPage } from './pages/DesignSystemPage.js';
+import { LoginPage } from './pages/LoginPage.js';
+import { RegisterPage } from './pages/RegisterPage.js';
+import { ModuleViewPage } from './pages/RolePortalPage.js';
+import { getDefaultRouteForRole } from './types/auth.types.js';
+
+function RootRedirect() {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
+}
 
 export function App() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
-
-  const handleThemeChange = (mode: ThemeMode) => {
-    setThemeMode(mode);
-    applyThemeMode(mode);
-  };
-
   return (
-    <div className="min-h-screen bg-canvas text-[var(--text-primary)]">
-      {/* Portada Hero — Inspirada directamente en la Portada de Tech Challenge 360 */}
-      <header className="pentandra-grid-bg border-b border-navy-800 px-6 py-12 text-white">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand-400/40 bg-brand-900 shadow-sm">
-                <ShoppingCart className="h-6 w-6 text-brand-400" />
-              </div>
-              <div className="border-l border-navy-700 pl-4">
-                <p className="font-mono text-xs tracking-[0.25em] text-slate-300 uppercase">
-                  Grupo Pentandra · Don Arturo
-                </p>
-                <p className="text-sm font-semibold text-white">Plataforma E-Commerce Enterprise</p>
-              </div>
-            </div>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<RootRedirect />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-            {/* Selector de Tema (Light / Dark / System) */}
-            <div className="inline-flex items-center rounded-lg border border-navy-700 bg-navy-900 p-1">
-              <button
-                type="button"
-                onClick={() => handleThemeChange('light')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                  themeMode === 'light'
-                    ? 'bg-brand-600 text-white'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Sun className="h-3.5 w-3.5" />
-                Claro
-              </button>
-              <button
-                type="button"
-                onClick={() => handleThemeChange('dark')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                  themeMode === 'dark'
-                    ? 'bg-brand-400 text-navy-950'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Moon className="h-3.5 w-3.5" />
-                Oscuro
-              </button>
-              <button
-                type="button"
-                onClick={() => handleThemeChange('system')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                  themeMode === 'system'
-                    ? 'bg-navy-700 text-brand-400'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Monitor className="h-3.5 w-3.5" />
-                Sistema
-              </button>
-            </div>
-          </div>
+            {/* CLIENT & ADMINISTRATOR Routes */}
+            <Route
+              path="/catalog"
+              element={
+                <ProtectedRoute allowedRoles={['CLIENT', 'ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-02 · CATÁLOGO DE PRODUCTOS Y VARIANTES"
+                    title="Catálogo de Productos y Precios Vigentes"
+                    description="Exploración de productos con búsqueda por texto, categoría, rango de precios y disponibilidad real en inventario."
+                    allowedRoles={['CLIENT', 'ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
 
-          <p className="pentandra-tag mb-3 text-sm font-semibold">// TECH CHALLENGE 360</p>
-          <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-            Reto ShopCart
-          </h1>
-          <p className="max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
-            Plataforma web de ventas de nivel productivo con control transaccional de inventario,
-            kardex auditable, cupones promocionales y gestión de pedidos por rol.
-          </p>
+            {/* CLIENT Exclusive Routes */}
+            <Route
+              path="/cart"
+              element={
+                <ProtectedRoute allowedRoles={['CLIENT']}>
+                  <ModuleViewPage
+                    rfCode="RF-04 · CARRITO DE COMPRAS Y RESERVAS"
+                    title="Mi Carrito de Compras"
+                    description="Gestión de ítems en el carrito, aplicación de cupones promocionales y proceso de checkout con reserva temporal de stock."
+                    allowedRoles={['CLIENT']}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-orders"
+              element={
+                <ProtectedRoute allowedRoles={['CLIENT']}>
+                  <ModuleViewPage
+                    rfCode="RF-07 · HISTORIAL Y SEGUIMIENTO DE PEDIDOS"
+                    title="Mis Pedidos"
+                    description="Consulta exclusiva de los pedidos del cliente autenticado, estados de envío, historial de transiciones y solicitud de devoluciones."
+                    allowedRoles={['CLIENT']}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/addresses"
+              element={
+                <ProtectedRoute allowedRoles={['CLIENT']}>
+                  <ModuleViewPage
+                    rfCode="RF-06 · DIRECCIONES DE ENTREGA"
+                    title="Mis Direcciones de Entrega"
+                    description="Administración de la libreta personal de direcciones de envío para pedidos."
+                    allowedRoles={['CLIENT']}
+                  />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Tarjetas inferiores estilo Portada */}
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="pentandra-cover-card p-5">
-              <span className="font-mono text-xs tracking-widest text-slate-400 uppercase">
-                ARQUITECTURA
-              </span>
-              <p className="mt-2 text-lg font-semibold text-white">SQL Server + SPs</p>
-              <p className="text-sm text-slate-300">ACID &amp; UPDLOCK</p>
-            </div>
-            <div className="pentandra-cover-card p-5">
-              <span className="font-mono text-xs tracking-widest text-slate-400 uppercase">
-                BACKEND API
-              </span>
-              <p className="mt-2 text-lg font-semibold text-white">Node.js 24 + TS</p>
-              <p className="text-sm text-slate-300">Express &amp; JWT RTR</p>
-            </div>
-            <div className="pentandra-cover-card p-5">
-              <span className="font-mono text-xs tracking-widest text-slate-400 uppercase">
-                FRONTEND UI
-              </span>
-              <p className="mt-2 text-lg font-semibold text-white">React + Tailwind</p>
-              <p className="text-sm text-slate-300">TypeScript Strict</p>
-            </div>
-            <div className="pentandra-cover-card p-5">
-              <span className="font-mono text-xs tracking-widest text-slate-400 uppercase">
-                SEGURIDAD
-              </span>
-              <p className="mt-2 flex items-center gap-1.5 text-lg font-semibold text-brand-400">
-                <ShieldCheck className="h-5 w-5" /> RBAC 3 Roles
-              </p>
-              <p className="text-sm text-slate-300">Cliente · Operador · Admin</p>
-            </div>
-          </div>
-        </div>
-      </header>
+            {/* OPERATOR & ADMINISTRATOR Routes */}
+            <Route
+              path="/orders-management"
+              element={
+                <ProtectedRoute allowedRoles={['OPERATOR', 'ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-07 & RF-08 · FLUJO OPERATIVO DE PEDIDOS Y DEVOLUCIONES"
+                    title="Gestión Operativa de Pedidos"
+                    description="Avance de estados de pedidos (Preparación, Despacho con empresa y número de guía, Entrega, Cancelación y Devoluciones parciales/totales)."
+                    allowedRoles={['OPERATOR', 'ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory"
+              element={
+                <ProtectedRoute allowedRoles={['OPERATOR', 'ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-03 · INVENTARIO TRANSACCIONAL Y KARDEX"
+                    title="Control de Inventario y Libro Mayor Kardex"
+                    description="Consulta de stock físico, stock reservado, stock disponible, alertas de stock mínimo y registro de entradas/ajustes auditables."
+                    allowedRoles={['OPERATOR', 'ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
 
-      {/* Catálogo de Tokens de la Paleta Extraída de la Portada */}
-      <main className="mx-auto max-w-6xl px-6 py-12">
-        <div className="mb-8 flex items-center gap-3">
-          <Palette className="h-6 w-6 text-primary" />
-          <div>
-            <span className="font-mono text-xs font-bold tracking-widest text-primary uppercase">
-              // 01 SISTEMA DE DISEÑO
-            </span>
-            <h2 className="text-2xl font-bold">
-              Paleta de Colores Oficial (`src/styles/theme.css`)
-            </h2>
-          </div>
-        </div>
+            {/* ADMINISTRATOR Exclusive Routes */}
+            <Route
+              path="/admin/catalog"
+              element={
+                <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-02 · ADMINISTRACIÓN DE CATÁLOGO Y PRECIOS"
+                    title="Administración de Catálogo, Variantes y Precios"
+                    description="Creación y edición de categorías, productos, variantes por SKU e historial de precios con vigencia programada."
+                    allowedRoles={['ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/coupons"
+              element={
+                <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-05 · CUPONES DE DESCUENTO"
+                    title="Gestión de Cupones Promocionales"
+                    description="Configuración de reglas de descuento porcentual o monto fijo, límites de uso total/por cliente y restricción por categoría."
+                    allowedRoles={['ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-01 · GESTIÓN DE USUARIOS Y ROLES"
+                    title="Administración de Usuarios del Sistema"
+                    description="Alta de cuentas de Operador y Administrador, consulta de usuarios y activación/desactivación de accesos."
+                    allowedRoles={['ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reports"
+              element={
+                <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-09 · REPORTES Y DASHBOARD EJECUTIVO"
+                    title="Dashboard Ejecutivo y Reportes Analíticos"
+                    description="Indicadores de ventas por período, top productos, valoración de inventario, efectividad de cupones y carritos abandonados."
+                    allowedRoles={['ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/audit"
+              element={
+                <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
+                  <ModuleViewPage
+                    rfCode="RF-10 · AUDITORÍA Y CONFIGURACIÓN DEL SISTEMA"
+                    title="Bitácora de Auditoría y Parámetros Globales"
+                    description="Consulta de trazabilidad OldValues/NewValues en JSON y edición de parámetros operativos (IVA, tiempos de reserva y abandono)."
+                    allowedRoles={['ADMINISTRATOR']}
+                  />
+                </ProtectedRoute>
+              }
+            />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SHOPCART_PALETTE.map((token) => (
-            <div
-              key={token.cssVar}
-              className="flex flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-surface shadow-xs"
-            >
-              <div
-                className={`flex h-20 items-end justify-between p-3 ${token.tailwindClass}`}
-              >
-                <span className="rounded bg-navy-950/80 px-2 py-0.5 font-mono text-xs font-medium text-white">
-                  {token.hex}
-                </span>
-                <span className="rounded bg-white/90 px-2 py-0.5 font-mono text-xs font-medium text-navy-950">
-                  {token.tailwindClass}
-                </span>
-              </div>
-              <div className="flex flex-1 flex-col justify-between p-4">
-                <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">{token.name}</h3>
-                  <p className="mt-0.5 font-mono text-xs text-primary">{token.cssVar}</p>
-                  <p className="mt-2 text-xs text-[var(--text-secondary)]">{token.source}</p>
-                </div>
-                <p className="mt-3 border-t border-[var(--border-subtle)] pt-2 text-xs text-[var(--text-muted)]">
-                  <strong>Uso:</strong> {token.usage}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
-    </div>
+            {/* Design System Showcase */}
+            <Route
+              path="/design-system"
+              element={
+                <ProtectedRoute allowedRoles={['CLIENT', 'OPERATOR', 'ADMINISTRATOR']}>
+                  <DesignSystemPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="*" element={<RootRedirect />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

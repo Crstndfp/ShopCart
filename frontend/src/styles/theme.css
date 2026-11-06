@@ -188,19 +188,49 @@
 
   /* User-interacted form validation styling (excludes range sliders) */
   input:not(input[type="range"]):user-invalid,
+  input:not(input[type="range"]).user-invalid-fallback,
   textarea:user-invalid,
-  select:user-invalid {
+  textarea.user-invalid-fallback,
+  select:user-invalid,
+  select.user-invalid-fallback {
     border-color: var(--palette-danger-600);
+    background-color: color-mix(in srgb, var(--palette-danger-600) 6%, var(--bg-surface));
   }
 
   input:not(input[type="range"]):user-valid,
+  input:not(input[type="range"]).user-valid-fallback,
   textarea:user-valid,
-  select:user-valid {
+  textarea.user-valid-fallback,
+  select:user-valid,
+  select.user-valid-fallback {
     border-color: var(--palette-success-600);
   }
 }
 
 @layer components {
+  .field-error-msg {
+    display: none;
+    color: var(--palette-danger-600);
+    font-size: 0.75rem;
+    margin-top: 0.375rem;
+  }
+
+  .form-field:has(input:user-invalid, input.user-invalid-fallback) .field-error-msg,
+  input:user-invalid ~ .field-error-msg,
+  input.user-invalid-fallback ~ .field-error-msg {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .form-field:has(input:user-invalid, input.user-invalid-fallback) .password-rules-list {
+    color: var(--palette-danger-600);
+    font-weight: 600;
+  }
+
+  .form-field:has(input:user-valid, input.user-valid-fallback) .password-rules-list {
+    display: none;
+  }
   .pentandra-grid-bg {
     background-color: var(--palette-navy-950);
     background-image:
