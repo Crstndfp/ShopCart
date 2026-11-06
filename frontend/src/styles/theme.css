@@ -1,0 +1,246 @@
+@import "tailwindcss";
+
+@layer reset, base, theme, components, utilities;
+
+/* ==========================================================================
+   1. TIER 1: LITERAL BRAND PALETTE (Extracted from Tech Challenge 360 Cover)
+   ========================================================================== */
+:root {
+  /* Cover Dark Surfaces & Technical Blueprint Grid */
+  --palette-navy-950: #0B1220;
+  --palette-navy-900: #121B2E;
+  --palette-navy-800: #1B2436;
+  --palette-navy-700: #24324D;
+
+  /* Grupo Pentandra / Don Arturo Identity */
+  --palette-brand-900: #0B3B5C;
+  --palette-brand-600: #0284C7;
+  --palette-brand-400: #38BDF8;
+  --palette-crimson-600: #DC2626;
+
+  /* Typography & Muted Slates */
+  --palette-slate-600: #4A5568;
+  --palette-slate-400: #93A1B8;
+  --palette-slate-300: #AEBBD0;
+
+  /* Document Light Surfaces */
+  --palette-surface-50: #F6F8FB;
+  --palette-surface-100: #F0F6FC;
+  --palette-surface-150: #E6EEF7;
+  --palette-surface-200: #E8EDF5;
+  --palette-surface-300: #D9DFE8;
+  --palette-white: #FFFFFF;
+
+  /* Semantic Status Colors */
+  --palette-success-600: #059669;
+  --palette-success-400: #34D399;
+  --palette-warning-600: #D97706;
+  --palette-warning-400: #FBBF24;
+  --palette-danger-600: #DC2626;
+  --palette-danger-400: #F87171;
+
+  /* ========================================================================
+     2. TIER 2: SEMANTIC & ADAPTIVE TOKENS (Light / Dark Mode)
+     ======================================================================== */
+  --bg-canvas: var(--palette-surface-50);
+  --bg-surface: var(--palette-white);
+  --bg-elevated: var(--palette-surface-100);
+  --bg-hero-cover: var(--palette-navy-950);
+
+  --text-primary: var(--palette-navy-950);
+  --text-secondary: var(--palette-slate-600);
+  --text-muted: var(--palette-slate-400);
+  --text-on-brand: var(--palette-white);
+
+  --brand-primary: var(--palette-brand-600);
+  --brand-primary-hover: var(--palette-brand-900);
+  --brand-accent: var(--palette-brand-400);
+
+  --border-subtle: var(--palette-surface-200);
+  --border-strong: var(--palette-surface-300);
+  --border-accent: var(--palette-brand-400);
+
+  --scrollbar-track: var(--palette-surface-100);
+  --scrollbar-thumb: var(--palette-slate-400);
+
+  /* Fallback for browsers without light-dark() support */
+  @media (prefers-color-scheme: dark) {
+    --bg-canvas: var(--palette-navy-950);
+    --bg-surface: var(--palette-navy-900);
+    --bg-elevated: var(--palette-navy-800);
+
+    --text-primary: var(--palette-white);
+    --text-secondary: var(--palette-slate-300);
+    --text-muted: var(--palette-slate-400);
+
+    --brand-primary: var(--palette-brand-400);
+    --brand-primary-hover: var(--palette-brand-600);
+
+    --border-subtle: var(--palette-navy-800);
+    --border-strong: var(--palette-navy-700);
+
+    --scrollbar-track: var(--palette-navy-900);
+    --scrollbar-thumb: var(--palette-navy-700);
+  }
+
+  /* Native CSS light-dark() resolution */
+  @supports (color: light-dark(white, black)) {
+    --bg-canvas: light-dark(var(--palette-surface-50), var(--palette-navy-950));
+    --bg-surface: light-dark(var(--palette-white), var(--palette-navy-900));
+    --bg-elevated: light-dark(var(--palette-surface-100), var(--palette-navy-800));
+
+    --text-primary: light-dark(var(--palette-navy-950), var(--palette-white));
+    --text-secondary: light-dark(var(--palette-slate-600), var(--palette-slate-300));
+    --text-muted: light-dark(var(--palette-slate-400), var(--palette-slate-400));
+
+    --brand-primary: light-dark(var(--palette-brand-600), var(--palette-brand-400));
+    --brand-primary-hover: light-dark(var(--palette-brand-900), var(--palette-brand-600));
+
+    --border-subtle: light-dark(var(--palette-surface-200), var(--palette-navy-800));
+    --border-strong: light-dark(var(--palette-surface-300), var(--palette-navy-700));
+
+    --scrollbar-track: light-dark(var(--palette-surface-100), var(--palette-navy-900));
+    --scrollbar-thumb: light-dark(var(--palette-slate-400), var(--palette-navy-700));
+  }
+
+  color-scheme: light dark;
+  accent-color: var(--brand-primary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-canvas: var(--palette-navy-950);
+  --bg-surface: var(--palette-navy-900);
+  --bg-elevated: var(--palette-navy-800);
+  --text-primary: var(--palette-white);
+  --text-secondary: var(--palette-slate-300);
+  --text-muted: var(--palette-slate-400);
+  --brand-primary: var(--palette-brand-400);
+  --brand-primary-hover: var(--palette-brand-600);
+  --border-subtle: var(--palette-navy-800);
+  --border-strong: var(--palette-navy-700);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-canvas: var(--palette-surface-50);
+  --bg-surface: var(--palette-white);
+  --bg-elevated: var(--palette-surface-100);
+  --text-primary: var(--palette-navy-950);
+  --text-secondary: var(--palette-slate-600);
+  --text-muted: var(--palette-slate-400);
+  --brand-primary: var(--palette-brand-600);
+  --brand-primary-hover: var(--palette-brand-900);
+  --border-subtle: var(--palette-surface-200);
+  --border-strong: var(--palette-surface-300);
+}
+
+/* ==========================================================================
+   3. TAILWIND CSS v4 THEME REGISTRATION (@theme)
+   ========================================================================== */
+@theme {
+  --color-navy-950: var(--palette-navy-950);
+  --color-navy-900: var(--palette-navy-900);
+  --color-navy-800: var(--palette-navy-800);
+  --color-navy-700: var(--palette-navy-700);
+
+  --color-brand-900: var(--palette-brand-900);
+  --color-brand-600: var(--palette-brand-600);
+  --color-brand-400: var(--palette-brand-400);
+  --color-crimson-600: var(--palette-crimson-600);
+
+  --color-slate-600: var(--palette-slate-600);
+  --color-slate-400: var(--palette-slate-400);
+  --color-slate-300: var(--palette-slate-300);
+
+  --color-surface-50: var(--palette-surface-50);
+  --color-surface-100: var(--palette-surface-100);
+  --color-surface-150: var(--palette-surface-150);
+  --color-surface-200: var(--palette-surface-200);
+  --color-surface-300: var(--palette-surface-300);
+
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-primary: var(--brand-primary);
+  --color-primary-hover: var(--brand-primary-hover);
+  --color-accent: var(--brand-accent);
+}
+
+/* ==========================================================================
+   4. BASE STYLES, ACCESSIBILITY & COVER SIGNATURE COMPONENTS
+   ========================================================================== */
+@layer base {
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background-color: var(--palette-brand-400);
+    color: var(--palette-navy-950);
+  }
+
+  /* User-interacted form validation styling (excludes range sliders) */
+  input:not(input[type="range"]):user-invalid,
+  textarea:user-invalid,
+  select:user-invalid {
+    border-color: var(--palette-danger-600);
+  }
+
+  input:not(input[type="range"]):user-valid,
+  textarea:user-valid,
+  select:user-valid {
+    border-color: var(--palette-success-600);
+  }
+}
+
+@layer components {
+  .pentandra-grid-bg {
+    background-color: var(--palette-navy-950);
+    background-image:
+      linear-gradient(to right, var(--palette-navy-800) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--palette-navy-800) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .pentandra-cover-card {
+    background-color: var(--palette-navy-900);
+    border: 1px solid var(--palette-navy-800);
+    border-top: 2px solid var(--palette-brand-400);
+    color: var(--palette-white);
+  }
+
+  .pentandra-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--palette-brand-400);
+  }
+}
+
+/* Legacy fallback for WebKit/Blink browsers without scrollbar-color */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+}
+
+/* Forced Colors Mode (Windows High Contrast) fallback */
+@media (forced-colors: active) {
+  .pentandra-cover-card {
+    border: 1px solid CanvasText;
+  }
+}
