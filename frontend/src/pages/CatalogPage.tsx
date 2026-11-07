@@ -8,6 +8,8 @@ import {
   ChevronRight,
   Eye,
   Filter,
+  LayoutGrid,
+  List,
   Loader2,
   Package,
   RotateCcw,
@@ -49,6 +51,7 @@ export function CatalogPage() {
   const [sortDir, setSortDir] = useState<CatalogSortDir>('ASC');
   const [page, setPage] = useState(1);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Data & Status States
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
@@ -221,85 +224,93 @@ export function CatalogPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
-      {/* Responsive Cover Banner with Fluid Typography */}
-      <section className="pentandra-cover-card rounded-2xl p-5 sm:p-8">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div>
-            <p className="pentandra-tag text-xs font-semibold">
-              // RF-02 CATÁLOGO TRANSACCIONAL Y STOCK EN TIEMPO REAL
-            </p>
-            <h1 className="mt-1 text-[clamp(1.5rem,1.1rem+1.8vw,2.25rem)] font-bold tracking-tight text-white">
-              Catálogo Oficial de Productos
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-300 sm:text-sm">
-              Precios vigentes en Quetzales (GTQ) con cálculo instantáneo de stock disponible
-              (Stock Físico menos Reservas Activas de Checkout).
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            {user?.role === 'CLIENT' && (
-              <Link
-                to="/cart"
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-400 hover:text-navy-950 sm:text-sm"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                Ver Mi Carrito
-              </Link>
-            )}
-            {user?.role === 'ADMINISTRATOR' && (
-              <Link
-                to="/admin/catalog"
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-400/40 bg-navy-950 px-4 py-2.5 text-xs font-semibold text-brand-400 transition hover:bg-brand-900 hover:text-white sm:text-sm"
-              >
-                <Settings className="h-4 w-4" />
-                Consola Admin de Catálogo
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
-
+    <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
       {/* Search & Filter Controls Bar (100% Responsive) */}
       <section
         aria-label="Filtros y búsqueda de productos"
-        className="mt-6 rounded-2xl border border-[var(--border-subtle)] bg-surface p-4 shadow-xs sm:p-5"
+        className="rounded-2xl border border-[var(--border-subtle)] bg-surface p-4 shadow-xs sm:p-5"
       >
-        <form onSubmit={handleSearchSubmit} className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              enterKeyHint="search"
-              placeholder="Buscar por nombre de producto, descripción o SKU..."
-              aria-label="Buscar productos"
-              className="w-full rounded-xl border border-[var(--border-strong)] bg-canvas py-2.5 pr-4 pl-10 text-sm text-[var(--text-primary)] transition focus:border-primary focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <form onSubmit={handleSearchSubmit} className="flex flex-1 items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                enterKeyHint="search"
+                placeholder="Buscar por nombre de producto, descripción o SKU..."
+                aria-label="Buscar productos"
+                className="w-full rounded-xl border border-[var(--border-strong)] bg-canvas py-2.5 pr-4 pl-10 text-sm text-[var(--text-primary)] transition focus:border-primary focus:outline-none"
+              />
+            </div>
             <button
               type="submit"
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-900 sm:flex-initial"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-900"
             >
               <Search className="h-4 w-4" />
-              Buscar
+              <span className="hidden sm:inline">Buscar</span>
             </button>
+          </form>
+
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
+            {/* View Mode Toggle: Grid vs List */}
+            <div
+              role="group"
+              aria-label="Modo de visualización"
+              className="inline-flex items-center rounded-xl border border-[var(--border-strong)] bg-canvas p-1"
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                aria-pressed={viewMode === "grid"}
+                title="Vista en Cuadrícula"
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                  viewMode === "grid"
+                    ? "bg-brand-600 text-white shadow-xs"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden md:inline">Cuadrícula</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                aria-pressed={viewMode === "list"}
+                title="Vista en Lista"
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                  viewMode === "list"
+                    ? "bg-brand-600 text-white shadow-xs"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                <List className="h-4 w-4" />
+                <span className="hidden md:inline">Lista</span>
+              </button>
+            </div>
 
             <button
               type="button"
               onClick={() => setShowMobileFilters((prev) => !prev)}
               aria-expanded={showMobileFilters}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-canvas px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] lg:hidden"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-canvas px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] lg:hidden"
             >
               <SlidersHorizontal className="h-4 w-4 text-primary" />
               Filtros
             </button>
+
+            {user?.role === "ADMINISTRATOR" && (
+              <Link
+                to="/admin/catalog"
+                className="hidden items-center gap-1.5 rounded-xl border border-brand-400/40 bg-navy-950 px-3 py-2 text-xs font-semibold text-brand-400 transition hover:bg-brand-900 hover:text-white md:inline-flex"
+              >
+                <Settings className="h-4 w-4" />
+                Admin
+              </Link>
+            )}
           </div>
-        </form>
+        </div>
 
         {/* Category Pills (Scrollable on Mobile) */}
         <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
@@ -519,19 +530,103 @@ export function CatalogPage() {
               </p>
             </div>
 
-            {/* Responsive Product Cards Grid with @container and aspect-ratio reservation */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((product) => {
-                const hasStock = product.TotalAvailableStock > 0;
+            {/* Products Display: Conditional Grid vs List View */}
+            {viewMode === "grid" ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {products.map((product) => {
+                  const hasStock = product.TotalAvailableStock > 0;
 
-                return (
-                  <article
-                    key={product.IDProduct}
-                    className="catalog-card-container group flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-surface shadow-xs transition hover:border-primary hover:shadow-md"
-                  >
-                    <div>
-                      {/* Media Container with explicit aspect-ratio (16:10) to prevent CLS */}
-                      <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-[var(--border-subtle)] bg-navy-900">
+                  return (
+                    <article
+                      key={product.IDProduct}
+                      className="catalog-card-container group flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-surface shadow-xs transition hover:border-primary hover:shadow-md"
+                    >
+                      <div>
+                        {/* Media Container with explicit aspect-ratio (16:10) to prevent CLS */}
+                        <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-[var(--border-subtle)] bg-navy-900">
+                          {product.MainImageUrl ? (
+                            <img
+                              src={product.MainImageUrl}
+                              alt={product.ProductName}
+                              loading="lazy"
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="pentandra-grid-bg flex h-full w-full flex-col items-center justify-center p-4 text-center">
+                              <Package className="h-10 w-10 text-brand-400/80" />
+                              <span className="mt-2 font-mono text-[11px] tracking-wider text-slate-300 uppercase">
+                                {product.CategoryName}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Category Tag */}
+                          <span className="absolute top-3 left-3 rounded-lg border border-navy-700 bg-navy-950/90 px-2.5 py-1 font-mono text-[11px] font-semibold text-brand-400">
+                            {product.CategoryName}
+                          </span>
+
+                          {/* Real-Time Stock Badge */}
+                          <span
+                            className={`absolute top-3 right-3 rounded-lg px-2.5 py-1 font-mono text-[11px] font-bold shadow-xs ${
+                              hasStock
+                                ? "border border-emerald-500/40 bg-emerald-950/90 text-emerald-300"
+                                : "bg-crimson-600 text-white"
+                            }`}
+                          >
+                            {hasStock
+                              ? `${product.TotalAvailableStock} disp.`
+                              : "Agotado"}
+                          </span>
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="p-4 sm:p-5">
+                          <h2 className="line-clamp-1 text-base font-bold text-[var(--text-primary)] group-hover:text-primary">
+                            {product.ProductName}
+                          </h2>
+                          <p className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-[var(--text-secondary)]">
+                            {product.Description || "Sin descripción adicional registrada."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Card Footer */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] bg-elevated/40 px-4 py-3.5 sm:px-5">
+                        <div>
+                          <span className="block font-mono text-[10px] uppercase text-[var(--text-muted)]">
+                            Precio Vigente
+                          </span>
+                          <span className="text-base font-extrabold text-[var(--text-primary)]">
+                            {formatPriceRangeGTQ(product.MinPrice, product.MaxPrice)}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void handleOpenProductDetail(product.IDProduct)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-brand-900"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Ver Variantes
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              /* List View Mode (100% Responsive with Horizontal Card layout) */
+              <div className="space-y-3.5">
+                {products.map((product) => {
+                  const hasStock = product.TotalAvailableStock > 0;
+
+                  return (
+                    <article
+                      key={product.IDProduct}
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-surface shadow-xs transition hover:border-primary sm:flex-row sm:items-stretch"
+                    >
+                      {/* Media Column */}
+                      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-navy-900 sm:aspect-square sm:w-44 md:w-52">
                         {product.MainImageUrl ? (
                           <img
                             src={product.MainImageUrl}
@@ -540,69 +635,70 @@ export function CatalogPage() {
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
                         ) : (
-                          <div className="pentandra-grid-bg flex h-full w-full flex-col items-center justify-center p-4 text-center">
-                            <Package className="h-10 w-10 text-brand-400/80" />
-                            <span className="mt-2 font-mono text-[11px] tracking-wider text-slate-300 uppercase">
+                          <div className="pentandra-grid-bg flex h-full w-full flex-col items-center justify-center p-3 text-center">
+                            <Package className="h-8 w-8 text-brand-400/80" />
+                            <span className="mt-1 font-mono text-[10px] tracking-wider text-slate-300 uppercase">
                               {product.CategoryName}
                             </span>
                           </div>
                         )}
-
-                        {/* Category Tag */}
-                        <span className="absolute top-3 left-3 rounded-lg border border-navy-700 bg-navy-950/90 px-2.5 py-1 font-mono text-[11px] font-semibold text-brand-400">
+                        <span className="absolute top-2 left-2 rounded-md border border-navy-700 bg-navy-950/90 px-2 py-0.5 font-mono text-[10px] font-semibold text-brand-400 sm:hidden">
                           {product.CategoryName}
                         </span>
-
-                        {/* Real-Time Stock Badge */}
-                        <span
-                          className={`absolute top-3 right-3 rounded-lg px-2.5 py-1 font-mono text-[11px] font-bold shadow-xs ${
-                            hasStock
-                              ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-500/40'
-                              : 'bg-crimson-600 text-white'
-                          }`}
-                        >
-                          {hasStock
-                            ? `${product.TotalAvailableStock} disp.`
-                            : 'Agotado'}
-                        </span>
                       </div>
 
-                      {/* Card Body */}
-                      <div className="p-4 sm:p-5">
-                        <h2 className="line-clamp-1 text-base font-bold text-[var(--text-primary)] group-hover:text-primary">
-                          {product.ProductName}
-                        </h2>
-                        <p className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-[var(--text-secondary)]">
-                          {product.Description || 'Sin descripción adicional registrada.'}
-                        </p>
+                      {/* Content Column */}
+                      <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+                        <div>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="hidden rounded-md border border-navy-700 bg-navy-950/80 px-2 py-0.5 font-mono text-[10px] font-semibold text-brand-400 sm:inline-flex">
+                              {product.CategoryName}
+                            </span>
+                            <span
+                              className={`rounded-lg px-2 py-0.5 font-mono text-[11px] font-bold ${
+                                hasStock
+                                  ? "border border-emerald-500/40 bg-emerald-950/90 text-emerald-300"
+                                  : "bg-crimson-600 text-white"
+                              }`}
+                            >
+                              {hasStock ? `${product.TotalAvailableStock} disp.` : "Agotado"}
+                            </span>
+                          </div>
+
+                          <h2 className="mt-2 text-base font-bold text-[var(--text-primary)] group-hover:text-primary sm:text-lg">
+                            {product.ProductName}
+                          </h2>
+                          <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-secondary)] sm:text-sm">
+                            {product.Description || "Sin descripción adicional registrada."}
+                          </p>
+                        </div>
+
+                        {/* List Item Actions & Price */}
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3.5">
+                          <div>
+                            <span className="block font-mono text-[10px] uppercase text-[var(--text-muted)]">
+                              Precio Vigente
+                            </span>
+                            <span className="text-lg font-extrabold text-[var(--text-primary)]">
+                              {formatPriceRangeGTQ(product.MinPrice, product.MaxPrice)}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleOpenProductDetail(product.IDProduct)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-900"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Ver Variantes
+                          </button>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Card Footer */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] bg-elevated/40 px-4 py-3.5 sm:px-5">
-                      <div>
-                        <span className="block font-mono text-[10px] uppercase text-[var(--text-muted)]">
-                          Precio Vigente
-                        </span>
-                        <span className="text-base font-extrabold text-[var(--text-primary)]">
-                          {formatPriceRangeGTQ(product.MinPrice, product.MaxPrice)}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleOpenProductDetail(product.IDProduct)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-brand-900"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        Ver Variantes
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
+                    </article>
+                  );
+                })}
+              </div>
+            )}
             {/* Responsive Pagination Controls */}
             {pagination.totalPages > 1 && (
               <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-subtle)] bg-surface px-4 py-3">

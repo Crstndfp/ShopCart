@@ -68,9 +68,21 @@ export function AppLayout() {
             </div>
           </Link>
 
-          {/* Right Controls: Theme Switcher + User Profile / Auth Links */}
-          <div className="flex items-center gap-3">
-            {/* Theme Switcher */}
+            {/* Right Controls: Cart + Theme Switcher + User Profile / Auth Links */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              {/* Botón Permanente de Carrito en Navbar (Cliente e Invitados) */}
+              {(!user || user.role === 'CLIENT') && (
+                <Link
+                  to="/cart"
+                  aria-label="Ver mi carrito de compras"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand-400/40 bg-brand-900/60 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-600 sm:px-3 sm:py-2"
+                >
+                  <ShoppingCart className="h-4 w-4 text-brand-400" />
+                  <span className="hidden sm:inline">Carrito</span>
+                </Link>
+              )}
+
+              {/* Theme Switcher */}
             <div
               role="group"
               aria-label="Selector de tema visual"
