@@ -36,6 +36,89 @@ import {
   type ProductVariant,
 } from '../types/catalog.types.js';
 
+function CatalogSkeletonGrid() {
+  return (
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Cargando productos en cuadrícula"
+      className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={`catalog-skeleton-grid-${index}`}
+          className="flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-surface shadow-xs animate-pulse"
+        >
+          <div>
+            <div className="relative aspect-[16/10] w-full bg-[var(--bg-elevated)]">
+              <div className="absolute top-3 left-3 h-5 w-20 rounded-md bg-[var(--border-subtle)]" />
+              <div className="absolute top-3 right-3 h-5 w-16 rounded-md bg-[var(--border-subtle)]" />
+            </div>
+
+            <div className="space-y-2.5 p-4 sm:p-5">
+              <div className="h-5 w-3/4 rounded-md bg-[var(--bg-elevated)]" />
+              <div className="h-3.5 w-full rounded-md bg-[var(--bg-elevated)]" />
+              <div className="h-3.5 w-2/3 rounded-md bg-[var(--bg-elevated)]" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-[var(--border-subtle)] bg-elevated/40 px-4 py-3.5 sm:px-5">
+            <div className="space-y-1">
+              <div className="h-2.5 w-16 rounded-md bg-[var(--border-subtle)]" />
+              <div className="h-5 w-24 rounded-md bg-[var(--border-subtle)]" />
+            </div>
+            <div className="h-8 w-28 rounded-xl bg-[var(--border-subtle)]" />
+          </div>
+        </div>
+      ))}
+      <span className="sr-only">Cargando catálogo de productos en formato cuadrícula...</span>
+    </div>
+  );
+}
+
+function CatalogSkeletonList() {
+  return (
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Cargando productos en lista"
+      className="space-y-3.5"
+    >
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={`catalog-skeleton-list-${index}`}
+          className="flex flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-surface shadow-xs animate-pulse sm:flex-row sm:items-stretch"
+        >
+          <div className="relative aspect-[16/10] w-full shrink-0 bg-[var(--bg-elevated)] sm:aspect-square sm:w-44 md:w-52" />
+
+          <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="h-4 w-20 rounded-md bg-[var(--border-subtle)]" />
+                <div className="h-4 w-16 rounded-md bg-[var(--border-subtle)]" />
+              </div>
+              <div className="mt-3 h-5 w-2/3 rounded-md bg-[var(--bg-elevated)]" />
+              <div className="mt-2.5 space-y-1.5">
+                <div className="h-3.5 w-full rounded-md bg-[var(--bg-elevated)]" />
+                <div className="h-3.5 w-4/5 rounded-md bg-[var(--bg-elevated)]" />
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3.5">
+              <div className="space-y-1">
+                <div className="h-2.5 w-16 rounded-md bg-[var(--border-subtle)]" />
+                <div className="h-6 w-28 rounded-md bg-[var(--border-subtle)]" />
+              </div>
+              <div className="h-8 w-28 rounded-xl bg-[var(--border-subtle)]" />
+            </div>
+          </div>
+        </div>
+      ))}
+      <span className="sr-only">Cargando catálogo de productos en formato lista...</span>
+    </div>
+  );
+}
+
 export function CatalogPage() {
   const { user } = useAuth();
 
@@ -468,18 +551,14 @@ export function CatalogPage() {
         </div>
       </section>
 
-      {/* Main Content States: Loading / Error / Empty / Responsive Grid */}
+      {/* Main Content States: Loading (Skeletons) / Error / Empty / Responsive Grid/List */}
       <section className="mt-6" aria-live="polite">
         {isLoading ? (
-          <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-surface p-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">
-              Consultando catálogo y disponibilidad en tiempo real...
-            </p>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Calculando existencias físicas y reservas activas en SQL Server
-            </p>
-          </div>
+          viewMode === 'grid' ? (
+            <CatalogSkeletonGrid />
+          ) : (
+            <CatalogSkeletonList />
+          )
         ) : errorMessage ? (
           <div
             role="alert"
