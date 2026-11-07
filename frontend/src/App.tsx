@@ -2,6 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute.js';
 import { AppLayout } from './components/layout/AppLayout.js';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
+import { CatalogPage } from './pages/CatalogPage.js';
 import { DesignSystemPage } from './pages/DesignSystemPage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
@@ -26,17 +28,12 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* CLIENT & ADMINISTRATOR Routes */}
+            {/* RF-02: CLIENT & ADMINISTRATOR Product Catalog & Real-Time Stock */}
             <Route
               path="/catalog"
               element={
                 <ProtectedRoute allowedRoles={['CLIENT', 'ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-02 · CATÁLOGO DE PRODUCTOS Y VARIANTES"
-                    title="Catálogo de Productos y Precios Vigentes"
-                    description="Exploración de productos con búsqueda por texto, categoría, rango de precios y disponibilidad real en inventario."
-                    allowedRoles={['CLIENT', 'ADMINISTRATOR']}
-                  />
+                  <CatalogPage />
                 </ProtectedRoute>
               }
             />
@@ -110,17 +107,12 @@ export function App() {
               }
             />
 
-            {/* ADMINISTRATOR Exclusive Routes */}
+            {/* RF-02: ADMINISTRATOR Exclusive Catalog, Variants & Prices Console */}
             <Route
               path="/admin/catalog"
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-02 · ADMINISTRACIÓN DE CATÁLOGO Y PRECIOS"
-                    title="Administración de Catálogo, Variantes y Precios"
-                    description="Creación y edición de categorías, productos, variantes por SKU e historial de precios con vigencia programada."
-                    allowedRoles={['ADMINISTRATOR']}
-                  />
+                  <AdminCatalogPage />
                 </ProtectedRoute>
               }
             />
@@ -168,7 +160,7 @@ export function App() {
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
                   <ModuleViewPage
-                    rfCode="RF-10 · AUDITORÍA Y CONFIGURACIÓN DEL SISTEMA"
+                    rfCode="RF-010 · AUDITORÍA Y CONFIGURACIÓN DEL SISTEMA"
                     title="Bitácora de Auditoría y Parámetros Globales"
                     description="Consulta de trazabilidad OldValues/NewValues en JSON y edición de parámetros operativos (IVA, tiempos de reserva y abandono)."
                     allowedRoles={['ADMINISTRATOR']}

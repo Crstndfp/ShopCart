@@ -205,9 +205,101 @@
   select.user-valid-fallback {
     border-color: var(--palette-success-600);
   }
+
+  /* Native Modal Dialog Top-Layer Scroll Containment (modern-web-guidance: dialog) */
+  dialog:modal {
+    overscroll-behavior: contain;
+    max-width: min(94vw, 46rem);
+    width: 100%;
+    margin: auto;
+    border-radius: 1rem;
+    border: 1px solid var(--border-subtle);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    padding: 0;
+  }
+
+  dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background-color: rgba(11, 18, 32, 0.68);
+    backdrop-filter: blur(3px);
+  }
 }
 
 @layer components {
+  .catalog-card-container {
+    container-type: inline-size;
+  }
+
+  /* Responsive Table with @container query (modern-web-guidance: responsive-table) */
+  .responsive-table-wrapper {
+    overflow: auto;
+    max-inline-size: 100%;
+    max-block-size: min(640px, 78dvh);
+    container-type: inline-size;
+    border-radius: 0.875rem;
+    border: 1px solid var(--border-subtle);
+    background-color: var(--bg-surface);
+  }
+
+  .responsive-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .responsive-table thead {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    background-color: var(--bg-elevated);
+  }
+
+  .responsive-table tbody th {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    background-color: var(--bg-surface);
+  }
+
+  @container (width < 640px) {
+    .responsive-table,
+    .responsive-table thead,
+    .responsive-table tbody,
+    .responsive-table tr,
+    .responsive-table th,
+    .responsive-table td {
+      display: block;
+    }
+
+    .responsive-table thead {
+      display: none;
+    }
+
+    .responsive-table tbody tr {
+      margin: 0.75rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.75rem;
+      overflow: hidden;
+      background-color: var(--bg-surface);
+    }
+
+    .responsive-table tbody th {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 2;
+      background-color: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .responsive-table tbody td[data-label]::before {
+      content: attr(data-label) ": ";
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-right: 0.25rem;
+    }
+  }
   .field-error-msg {
     display: none;
     color: var(--palette-danger-600);
