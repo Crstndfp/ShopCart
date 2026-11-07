@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
 import { CatalogPage } from './pages/CatalogPage.js';
 import { DesignSystemPage } from './pages/DesignSystemPage.js';
+import { InventoryPage } from './pages/InventoryPage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 import { ModuleViewPage } from './pages/RolePortalPage.js';
@@ -97,12 +98,7 @@ export function App() {
               path="/inventory"
               element={
                 <ProtectedRoute allowedRoles={['OPERATOR', 'ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-03 · INVENTARIO TRANSACCIONAL Y KARDEX"
-                    title="Control de Inventario y Libro Mayor Kardex"
-                    description="Consulta de stock físico, stock reservado, stock disponible, alertas de stock mínimo y registro de entradas/ajustes auditables."
-                    allowedRoles={['OPERATOR', 'ADMINISTRATOR']}
-                  />
+                  <InventoryPage />
                 </ProtectedRoute>
               }
             />
