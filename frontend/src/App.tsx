@@ -3,6 +3,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute.js';
 import { AppLayout } from './components/layout/AppLayout.js';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
+import { AdminCouponsPage } from './pages/AdminCouponsPage.js';
 import { CartPage } from './pages/CartPage.js';
 import { CatalogPage } from './pages/CatalogPage.js';
 import { DesignSystemPage } from './pages/DesignSystemPage.js';
@@ -100,12 +101,7 @@ export function App() {
               path="/admin/coupons"
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-05 · CUPONES DE DESCUENTO"
-                    title="Gestión de Cupones Promocionales"
-                    description="Configuración de reglas de descuento porcentual o monto fijo, límites de uso total/por cliente y restricción por categoría."
-                    allowedRoles={['ADMINISTRATOR']}
-                  />
+                  <AdminCouponsPage />
                 </ProtectedRoute>
               }
             />

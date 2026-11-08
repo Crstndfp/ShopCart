@@ -14,9 +14,12 @@ import {
   RotateCcw,
   ShieldCheck,
   ShoppingCart,
+  Tag,
   Trash2,
+  X,
 } from 'lucide-react';
 import { cartApi } from '../api/cart.api.js';
+import { couponApi } from '../api/coupon.api.js';
 import { HttpError } from '../api/http-client.js';
 import { useAuth } from '../context/AuthContext.js';
 import { formatGTQ } from '../types/catalog.types.js';
@@ -26,6 +29,10 @@ import {
   type CartData,
   type CartItem,
 } from '../types/cart.types.js';
+import {
+  formatCouponStatusMessage,
+  type CouponValidationResult,
+} from '../types/coupon.types.js';
 
 export function CartPage() {
   const { user, isAuthenticated } = useAuth();
@@ -37,6 +44,58 @@ export function CartPage() {
   const [updatingVariantId, setUpdatingVariantId] = useState<number | null>(null);
   const [isClearingCart, setIsClearingCart] = useState(false);
   const [orderNotice, setOrderNotice] = useState<string | null>(null);
+
+  // -------------------------------------------------------------
+  // RF-05: Coupon Validation States & Handlers
+  // -------------------------------------------------------------
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponFeedback, setCouponFeedback] = useState<{
+    message: string;
+    isError: boolean;
+  } | null>(null);
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponInput.trim() || !cartData?.cart) return;
+
+    setIsApplyingCoupon(true);
+    setCouponFeedback(null);
+    try {
+      const result = await couponApi.validateCoupon(
+        couponInput.trim(),
+        cartData.cart.GrossSubtotal
+      );
+
+      if (result.validationStatus === 'VALID') {
+        setAppliedCoupon(result);
+        setCouponFeedback({
+          message: `¡Cupón '${result.code}' aplicado exitosamente!`,
+          isError: false,
+        });
+      } else {
+        const status = formatCouponStatusMessage(result.validationStatus);
+        setAppliedCoupon(null);
+        setCouponFeedback({
+          message: status.message,
+          isError: true,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof HttpError ? err.message : 'Error al validar el cupón.';
+      setAppliedCoupon(null);
+      setCouponFeedback({ message: msg, isError: true });
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponFeedback(null);
+    setCouponInput('');
+  };
 
   // -------------------------------------------------------------
   // Fetch Cart from Backend
@@ -394,30 +453,114 @@ export function CartPage() {
                 Resumen de tu Orden
               </h2>
 
-              {cartHeader && (
-                <div className="mt-4 space-y-2.5 border-b border-[var(--border-subtle)] pb-4 text-xs">
-                  <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                    <span>Subtotal Neto (Base Imponible)</span>
-                    <span className="font-mono font-medium text-[var(--text-primary)]">
-                      {formatGTQ(cartHeader.NetSubtotal)}
-                    </span>
-                  </div>
+              {/* Coupon Application Box */}
+              <div className="mt-4 border-b border-[var(--border-subtle)] pb-4">
+                <label
+                  htmlFor="coupon-code-input"
+                  className="block text-xs font-semibold text-[var(--text-primary)]"
+                >
+                  ¿Tienes un cupón de descuento?
+                </label>
 
-                  <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                    <span>IVA Ley (12% GTQ)</span>
-                    <span className="font-mono font-medium text-[var(--text-primary)]">
-                      {formatGTQ(cartHeader.IVATaxAmount)}
-                    </span>
+                {appliedCoupon ? (
+                  <div className="mt-2 flex items-center justify-between rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-2.5 text-xs text-emerald-300">
+                    <div className="flex items-center gap-1.5 font-mono font-bold">
+                      <Tag className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>{appliedCoupon.code}</span>
+                      <span className="font-normal text-[11px] text-emerald-400">
+                        (-{formatGTQ(appliedCoupon.calculatedDiscount)})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      title="Quitar cupón"
+                      className="rounded-md p-1 hover:bg-emerald-900/60"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
+                ) : (
+                  <form onSubmit={handleApplyCoupon} className="mt-2 flex gap-2">
+                    <input
+                      id="coupon-code-input"
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      placeholder="CÓDIGO (EJ. BIENVENIDA10)"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-canvas px-3 py-2 font-mono text-xs uppercase text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-hidden"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isApplyingCoupon || !couponInput.trim()}
+                      className="inline-flex shrink-0 items-center justify-center rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-900 disabled:opacity-50"
+                    >
+                      {isApplyingCoupon ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        'Aplicar'
+                      )}
+                    </button>
+                  </form>
+                )}
 
-                  <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-3 text-sm font-extrabold text-[var(--text-primary)]">
-                    <span>Total General</span>
-                    <span className="font-mono text-lg text-primary">
-                      {formatGTQ(cartHeader.Total)}
-                    </span>
+                {couponFeedback && (
+                  <p
+                    className={`mt-2 text-[11px] font-semibold ${
+                      couponFeedback.isError ? 'text-crimson-600' : 'text-emerald-400'
+                    }`}
+                  >
+                    {couponFeedback.message}
+                  </p>
+                )}
+              </div>
+
+              {cartHeader && (() => {
+                const discount = appliedCoupon?.calculatedDiscount ?? 0;
+                const grossSubtotal = cartHeader.GrossSubtotal;
+                const finalTotal = Math.max(0, cartHeader.Total - discount);
+                const finalNet = Number((finalTotal / 1.12).toFixed(2));
+                const finalIva = Number((finalTotal - finalNet).toFixed(2));
+
+                return (
+                  <div className="mt-4 space-y-2.5 border-b border-[var(--border-subtle)] pb-4 text-xs">
+                    <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                      <span>Subtotal Bruto</span>
+                      <span className="font-mono font-medium text-[var(--text-primary)]">
+                        {formatGTQ(grossSubtotal)}
+                      </span>
+                    </div>
+
+                    {discount > 0 && (
+                      <div className="flex items-center justify-between text-emerald-400">
+                        <span>Descuento ({appliedCoupon?.code})</span>
+                        <span className="font-mono font-bold">-{formatGTQ(discount)}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                      <span>Subtotal Neto (Base Imponible)</span>
+                      <span className="font-mono font-medium text-[var(--text-primary)]">
+                        {formatGTQ(finalNet)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                      <span>IVA Ley (12% GTQ)</span>
+                      <span className="font-mono font-medium text-[var(--text-primary)]">
+                        {formatGTQ(finalIva)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-3 text-sm font-extrabold text-[var(--text-primary)]">
+                      <span>Total General</span>
+                      <span className="font-mono text-lg text-primary">
+                        {formatGTQ(finalTotal)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Order Notice or Alert */}
               {orderNotice && (
