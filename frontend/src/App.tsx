@@ -3,6 +3,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute.js';
 import { AppLayout } from './components/layout/AppLayout.js';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
+import { CartPage } from './pages/CartPage.js';
 import { CatalogPage } from './pages/CatalogPage.js';
 import { DesignSystemPage } from './pages/DesignSystemPage.js';
 import { InventoryPage } from './pages/InventoryPage.js';
@@ -14,7 +15,7 @@ import { getDefaultRouteForRole } from './types/auth.types.js';
 function RootRedirect() {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/catalog" replace />;
   }
   return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
 }
@@ -29,30 +30,13 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* RF-02: CLIENT & ADMINISTRATOR Product Catalog & Real-Time Stock */}
-            <Route
-              path="/catalog"
-              element={
-                <ProtectedRoute allowedRoles={['CLIENT', 'ADMINISTRATOR']}>
-                  <CatalogPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* RF-02: Public Product Catalog & Real-Time Stock (Guests, Clients, Admins) */}
+            <Route path="/catalog" element={<CatalogPage />} />
+
+            {/* RF-04: Shopping Cart (Public to Guests & Clients, Auth Required at Checkout Gate) */}
+            <Route path="/cart" element={<CartPage />} />
 
             {/* CLIENT Exclusive Routes */}
-            <Route
-              path="/cart"
-              element={
-                <ProtectedRoute allowedRoles={['CLIENT']}>
-                  <ModuleViewPage
-                    rfCode="RF-04 · CARRITO DE COMPRAS Y RESERVAS"
-                    title="Mi Carrito de Compras"
-                    description="Gestión de ítems en el carrito, aplicación de cupones promocionales y proceso de checkout con reserva temporal de stock."
-                    allowedRoles={['CLIENT']}
-                  />
-                </ProtectedRoute>
-              }
-            />
             <Route
               path="/my-orders"
               element={

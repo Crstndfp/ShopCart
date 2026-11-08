@@ -68,6 +68,21 @@ export function getStoredGuestToken(): string | null {
   return window.localStorage.getItem(GUEST_TOKEN_STORAGE_KEY);
 }
 
+export function ensureGuestToken(): string {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return 'temp-guest-token';
+  }
+  let token = window.localStorage.getItem(GUEST_TOKEN_STORAGE_KEY);
+  if (!token || token.trim().length < 10) {
+    token =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `guest_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    window.localStorage.setItem(GUEST_TOKEN_STORAGE_KEY, token);
+  }
+  return token;
+}
+
 export function clearStoredGuestToken(): void {
   if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.removeItem(GUEST_TOKEN_STORAGE_KEY);
@@ -129,16 +144,23 @@ export async function apiRequest<T>(
   }
   if (session?.accessToken && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${session.accessToken}`);
-  }
-  const guestToken = getStoredGuestToken();
-  if (guestToken && !headers.has('X-Guest-Token')) {
-    headers.set('X-Guest-Token', guestToken);
+  } else if (!headers.has('Authorization')) {
+    // If user is unauthenticated, attach persistent Guest Token for anonymous cart persistence
+    const guestToken = ensureGuestToken();
+    if (!headers.has('X-Guest-Token')) {
+      headers.set('X-Guest-Token', guestToken);
+    }
   }
 
   let response = await fetch(endpoint, {
     ...fetchOptions,
     headers,
   });
+
+  const returnedGuestToken = response.headers.get('x-guest-token');
+  if (returnedGuestToken && typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(GUEST_TOKEN_STORAGE_KEY, returnedGuestToken);
+  }
 
   // RF-01: Transparent JWT renewal using Rotating Refresh Token on 401 Unauthorized
   if (response.status === 401 && !skipAuthRefresh && session?.refreshToken) {

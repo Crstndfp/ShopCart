@@ -180,7 +180,9 @@ export function hasAllowedRole(
 }
 
 export function getNavItemsForRole(userRole: UserRole | undefined | null): NavItemConfig[] {
-  if (!userRole) return [];
+  if (!userRole) {
+    return NAVIGATION_ITEMS.filter((item) => item.path === '/catalog' || item.path === '/cart');
+  }
   return NAVIGATION_ITEMS.filter((item) => item.roles.includes(userRole));
 }
 
