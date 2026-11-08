@@ -11,6 +11,8 @@ import { CheckoutPage } from './pages/CheckoutPage.js';
 import { DesignSystemPage } from './pages/DesignSystemPage.js';
 import { InventoryPage } from './pages/InventoryPage.js';
 import { LoginPage } from './pages/LoginPage.js';
+import { MyOrdersPage } from './pages/MyOrdersPage.js';
+import { OrdersManagementPage } from './pages/OrdersManagementPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 import { ModuleViewPage } from './pages/RolePortalPage.js';
 import { getDefaultRouteForRole } from './types/auth.types.js';
@@ -52,12 +54,7 @@ export function App() {
               path="/my-orders"
               element={
                 <ProtectedRoute allowedRoles={['CLIENT']}>
-                  <ModuleViewPage
-                    rfCode="RF-07 · HISTORIAL Y SEGUIMIENTO DE PEDIDOS"
-                    title="Mis Pedidos"
-                    description="Consulta exclusiva de los pedidos del cliente autenticado, estados de envío, historial de transiciones y solicitud de devoluciones."
-                    allowedRoles={['CLIENT']}
-                  />
+                  <MyOrdersPage />
                 </ProtectedRoute>
               }
             />
@@ -75,12 +72,7 @@ export function App() {
               path="/orders-management"
               element={
                 <ProtectedRoute allowedRoles={['OPERATOR', 'ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-07 & RF-08 · FLUJO OPERATIVO DE PEDIDOS Y DEVOLUCIONES"
-                    title="Gestión Operativa de Pedidos"
-                    description="Avance de estados de pedidos (Preparación, Despacho con empresa y número de guía, Entrega, Cancelación y Devoluciones parciales/totales)."
-                    allowedRoles={['OPERATOR', 'ADMINISTRATOR']}
-                  />
+                  <OrdersManagementPage />
                 </ProtectedRoute>
               }
             />

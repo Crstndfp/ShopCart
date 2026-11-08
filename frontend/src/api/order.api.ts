@@ -1,10 +1,12 @@
 import { apiRequest } from './http-client.js';
 import type { ApiSuccessResponse } from '../types/auth.types.js';
 import type {
+  AdvanceOrderStatusPayload,
   CheckoutPayload,
   OrderDetailResult,
   OrderListResponse,
   OrderQueryFilters,
+  ProcessReturnPayload,
 } from '../types/order.types.js';
 
 export const orderApi = {
@@ -50,6 +52,36 @@ export const orderApi = {
   async getOrderById(id: number): Promise<OrderDetailResult> {
     const response = await apiRequest<ApiSuccessResponse<OrderDetailResult>>(
       `/api/v1/orders/${id}`
+    );
+    return response.data;
+  },
+
+  // Advance order status (Operator / Administrator)
+  async advanceStatus(
+    id: number,
+    payload: AdvanceOrderStatusPayload
+  ): Promise<OrderDetailResult> {
+    const response = await apiRequest<ApiSuccessResponse<OrderDetailResult>>(
+      `/api/v1/orders/${id}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }
+    );
+    return response.data;
+  },
+
+  // Process item return (Operator / Administrator)
+  async processReturn(
+    id: number,
+    payload: ProcessReturnPayload
+  ): Promise<OrderDetailResult> {
+    const response = await apiRequest<ApiSuccessResponse<OrderDetailResult>>(
+      `/api/v1/orders/${id}/returns`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
     );
     return response.data;
   },

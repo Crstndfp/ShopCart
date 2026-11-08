@@ -136,3 +136,39 @@ export function parseShippingAddressSnapshot(
     return null;
   }
 }
+
+export interface AdvanceOrderStatusPayload {
+  status: 'IN_PREPARATION' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+  reason?: string;
+}
+
+export interface ProcessReturnPayload {
+  idOrderItem: number;
+  quantity: number;
+  reason: string;
+}
+
+export function getOrderProgressStep(status: string): number {
+  switch (status) {
+    case 'PAID':
+      return 1;
+    case 'IN_PREPARATION':
+      return 2;
+    case 'DISPATCHED':
+      return 3;
+    case 'DELIVERED':
+    case 'PARTIALLY_RETURNED':
+    case 'FULLY_RETURNED':
+      return 4;
+    case 'CANCELLED':
+    default:
+      return 0;
+  }
+}
+
+export function getAvailableReturnQuantity(item: {
+  QuantitySold: number;
+  QuantityReturned: number;
+}): number {
+  return Math.max(0, item.QuantitySold - item.QuantityReturned);
+}
