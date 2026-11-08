@@ -194,10 +194,12 @@ export function CartPage() {
       return;
     }
 
-    // 3. User is an authenticated CLIENT
-    setOrderNotice(
-      '¡Listo para finalizar! La reserva temporal de stock y selección de dirección de entrega se activarán en el siguiente paso de checkout.'
-    );
+    // 3. User is an authenticated CLIENT -> navigate to checkout flow
+    navigate('/checkout', {
+      state: {
+        couponCode: appliedCoupon?.code,
+      },
+    });
   };
 
   const items = cartData?.items || [];

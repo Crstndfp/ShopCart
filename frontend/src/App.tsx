@@ -2,10 +2,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute.js';
 import { AppLayout } from './components/layout/AppLayout.js';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { AddressesPage } from './pages/AddressesPage.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
 import { AdminCouponsPage } from './pages/AdminCouponsPage.js';
 import { CartPage } from './pages/CartPage.js';
 import { CatalogPage } from './pages/CatalogPage.js';
+import { CheckoutPage } from './pages/CheckoutPage.js';
 import { DesignSystemPage } from './pages/DesignSystemPage.js';
 import { InventoryPage } from './pages/InventoryPage.js';
 import { LoginPage } from './pages/LoginPage.js';
@@ -39,6 +41,14 @@ export function App() {
 
             {/* CLIENT Exclusive Routes */}
             <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute allowedRoles={['CLIENT']}>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/my-orders"
               element={
                 <ProtectedRoute allowedRoles={['CLIENT']}>
@@ -55,12 +65,7 @@ export function App() {
               path="/addresses"
               element={
                 <ProtectedRoute allowedRoles={['CLIENT']}>
-                  <ModuleViewPage
-                    rfCode="RF-06 · DIRECCIONES DE ENTREGA"
-                    title="Mis Direcciones de Entrega"
-                    description="Administración de la libreta personal de direcciones de envío para pedidos."
-                    allowedRoles={['CLIENT']}
-                  />
+                  <AddressesPage />
                 </ProtectedRoute>
               }
             />
