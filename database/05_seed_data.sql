@@ -85,33 +85,46 @@ GO
 -- ============================================================================
 -- 3. TEST USERS (Admin, Operator, Clients)
 -- Default Password for all: 'Password123!'
--- Bcrypt Hash: $2a$12$L7pYjZcMv6QYpU2d6B4pueeS8aU07a6s57L1jU21e9bW3aX4dY76q
+-- Argon2id Hash: $argon2id$v=19$m=65536,p=4,t=3$TFUq9kaeAKhTnIwlmNTfrQ$336hEadkjh5k2hzsrQYGbqf3WTTqxSQKW2g76jfa/B8
 -- ============================================================================
 
 DECLARE @AdminRoleID INT = (SELECT IDValue FROM dbo.ValuesLookup WHERE ValueCategory = 'USER_ROLE' AND Code = 'ADMINISTRATOR');
 DECLARE @OperatorRoleID INT = (SELECT IDValue FROM dbo.ValuesLookup WHERE ValueCategory = 'USER_ROLE' AND Code = 'OPERATOR');
 DECLARE @ClientRoleID INT = (SELECT IDValue FROM dbo.ValuesLookup WHERE ValueCategory = 'USER_ROLE' AND Code = 'CLIENT');
+DECLARE @SeedPasswordHash NVARCHAR(255) = '$argon2id$v=19$m=65536,p=4,t=3$TFUq9kaeAKhTnIwlmNTfrQ$336hEadkjh5k2hzsrQYGbqf3WTTqxSQKW2g76jfa/B8';
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'admin@shopcart.gt')
 BEGIN
     INSERT INTO dbo.Users (IDRole, FullName, Email, PasswordHash, PhoneNumber, IsActive, CreatedAt)
-    VALUES (@AdminRoleID, 'Admin Pentandra', 'admin@shopcart.gt', '$2a$12$L7pYjZcMv6QYpU2d6B4pueeS8aU07a6s57L1jU21e9bW3aX4dY76q', '+502 2222-0001', 1, SYSUTCDATETIME());
+    VALUES (@AdminRoleID, 'Admin Pentandra', 'admin@shopcart.gt', @SeedPasswordHash, '+502 2222-0001', 1, SYSUTCDATETIME());
+END
+ELSE
+BEGIN
+    UPDATE dbo.Users SET PasswordHash = @SeedPasswordHash, IsActive = 1 WHERE Email = 'admin@shopcart.gt';
 END
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'operator@shopcart.gt')
 BEGIN
     INSERT INTO dbo.Users (IDRole, FullName, Email, PasswordHash, PhoneNumber, IsActive, CreatedAt)
-    VALUES (@OperatorRoleID, 'Carlos Bodega Operador', 'operator@shopcart.gt', '$2a$12$L7pYjZcMv6QYpU2d6B4pueeS8aU07a6s57L1jU21e9bW3aX4dY76q', '+502 2222-0002', 1, SYSUTCDATETIME());
+    VALUES (@OperatorRoleID, 'Carlos Bodega Operador', 'operator@shopcart.gt', @SeedPasswordHash, '+502 2222-0002', 1, SYSUTCDATETIME());
+END
+ELSE
+BEGIN
+    UPDATE dbo.Users SET PasswordHash = @SeedPasswordHash, IsActive = 1 WHERE Email = 'operator@shopcart.gt';
 END
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'cliente@shopcart.gt')
 BEGIN
     INSERT INTO dbo.Users (IDRole, FullName, Email, PasswordHash, PhoneNumber, IsActive, CreatedAt)
-    VALUES (@ClientRoleID, 'Maria Lopez Cliente', 'cliente@shopcart.gt', '$2a$12$L7pYjZcMv6QYpU2d6B4pueeS8aU07a6s57L1jU21e9bW3aX4dY76q', '+502 5555-1234', 1, SYSUTCDATETIME());
+    VALUES (@ClientRoleID, 'Maria Lopez Cliente', 'cliente@shopcart.gt', @SeedPasswordHash, '+502 5555-1234', 1, SYSUTCDATETIME());
 
     DECLARE @NewClientID INT = SCOPE_IDENTITY();
     INSERT INTO dbo.Addresses (IDUser, Alias, RecipientName, AddressLine1, AddressLine2, Municipality, Department, PostalCode, ContactPhone, IsActive)
     VALUES (@NewClientID, 'Casa', 'Maria Lopez', '12 Calle 5-43 Zona 10', 'Edificio Reforma 10, Nivel 4', 'Guatemala', 'Guatemala', '01010', '+502 5555-1234', 1);
+END
+ELSE
+BEGIN
+    UPDATE dbo.Users SET PasswordHash = @SeedPasswordHash, IsActive = 1 WHERE Email = 'cliente@shopcart.gt';
 END
 GO
 
