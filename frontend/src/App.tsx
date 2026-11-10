@@ -3,6 +3,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute.js';
 import { AppLayout } from './components/layout/AppLayout.js';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AddressesPage } from './pages/AddressesPage.js';
+import { AdminAuditPage } from './pages/AdminAuditPage.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
 import { AdminCouponsPage } from './pages/AdminCouponsPage.js';
 import { AdminReportsPage } from './pages/AdminReportsPage.js';
@@ -16,7 +17,6 @@ import { LoginPage } from './pages/LoginPage.js';
 import { MyOrdersPage } from './pages/MyOrdersPage.js';
 import { OrdersManagementPage } from './pages/OrdersManagementPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
-import { ModuleViewPage } from './pages/RolePortalPage.js';
 import { getDefaultRouteForRole } from './types/auth.types.js';
 
 function RootRedirect() {
@@ -124,12 +124,7 @@ export function App() {
               path="/admin/audit"
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-010 · AUDITORÍA Y CONFIGURACIÓN DEL SISTEMA"
-                    title="Bitácora de Auditoría y Parámetros Globales"
-                    description="Consulta de trazabilidad OldValues/NewValues en JSON y edición de parámetros operativos (IVA, tiempos de reserva y abandono)."
-                    allowedRoles={['ADMINISTRATOR']}
-                  />
+                  <AdminAuditPage />
                 </ProtectedRoute>
               }
             />
