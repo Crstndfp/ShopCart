@@ -151,7 +151,7 @@ export function formatStockStatus(availableStock: number): {
   if (availableStock <= 5) {
     return {
       label: 'Stock Crítico',
-      colorClass: 'border-amber-500/40 bg-amber-950/80 text-amber-300',
+      colorClass: 'border-crimson-600/40 bg-crimson-950/80 text-red-300',
       isLow: true,
     };
   }

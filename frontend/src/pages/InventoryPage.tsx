@@ -23,6 +23,7 @@ import { catalogApi } from '../api/catalog.api.js';
 import { inventoryApi } from '../api/inventory.api.js';
 import { HttpError } from '../api/http-client.js';
 import { ModalDialog } from '../components/ui/ModalDialog.js';
+import { RhinoLoaderOverlay } from '../components/ui/RhinoLoaderOverlay.js';
 import { formatGTQ, type CategoryItem } from '../types/catalog.types.js';
 import {
   calculateProjectedStock,
@@ -53,6 +54,8 @@ export function InventoryPage() {
   // Stock Filters
   const [stockSearchInput, setStockSearchInput] = useState('');
   const [stockSearchApplied, setStockSearchApplied] = useState('');
+  const [stockSkuInput, setStockSkuInput] = useState('');
+  const [stockSkuApplied, setStockSkuApplied] = useState('');
   const [stockCategoryFilter, setStockCategoryFilter] = useState<number | undefined>(undefined);
   const [stockLowStockOnly, setStockLowStockOnly] = useState(false);
 
@@ -70,6 +73,7 @@ export function InventoryPage() {
   const [kardexMovementFilter, setKardexMovementFilter] = useState<string>('');
   const [kardexStartDate, setKardexStartDate] = useState('');
   const [kardexEndDate, setKardexEndDate] = useState('');
+  const [kardexSkuFilter, setKardexSkuFilter] = useState('');
 
   // -------------------------------------------------------------
   // Modal: Manual Stock Adjustment
@@ -109,8 +113,9 @@ export function InventoryPage() {
     setIsLoadingStock(true);
     setStockError(null);
     try {
+      const combinedSearch = [stockSkuApplied, stockSearchApplied].filter(Boolean).join(' ').trim();
       const response = await inventoryApi.getStockOverview({
-        search: stockSearchApplied || undefined,
+        search: combinedSearch || undefined,
         idCategory: stockCategoryFilter,
         lowStockOnly: stockLowStockOnly,
         page: stockPage,
@@ -127,7 +132,7 @@ export function InventoryPage() {
     } finally {
       setIsLoadingStock(false);
     }
-  }, [stockSearchApplied, stockCategoryFilter, stockLowStockOnly, stockPage, stockLimit]);
+  }, [stockSearchApplied, stockSkuApplied, stockCategoryFilter, stockLowStockOnly, stockPage, stockLimit]);
 
   useEffect(() => {
     void fetchStock();
@@ -171,11 +176,14 @@ export function InventoryPage() {
     e.preventDefault();
     setStockPage(1);
     setStockSearchApplied(stockSearchInput.trim());
+    setStockSkuApplied(stockSkuInput.trim());
   };
 
   const handleStockReset = () => {
     setStockSearchInput('');
     setStockSearchApplied('');
+    setStockSkuInput('');
+    setStockSkuApplied('');
     setStockCategoryFilter(undefined);
     setStockLowStockOnly(false);
     setStockPage(1);
@@ -192,6 +200,7 @@ export function InventoryPage() {
     setKardexMovementFilter('');
     setKardexStartDate('');
     setKardexEndDate('');
+    setKardexSkuFilter('');
     setKardexPage(1);
   };
 
@@ -249,7 +258,7 @@ export function InventoryPage() {
 
       setAdjustmentFeedback({
         type: 'success',
-        message: `Ajuste de ${delta > 0 ? '+' : ''}${delta} unidades registrado exitosamente en el Libro Mayor Kardex.`,
+        message: `Ajuste de ${delta > 0 ? '+' : ''}${delta} unidades registrado exitosamente en el Kardez.`,
       });
 
       // Refetch both views
@@ -298,7 +307,7 @@ export function InventoryPage() {
             </span>
           </div>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--text-primary)] sm:text-3xl">
-            Control de Inventario y Libro Mayor Kardex
+            Control de Inventario y Kardez
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Supervisión de stock físico, reservas activas, alertas de desabastecimiento y trazabilidad inmutable de movimientos.
@@ -395,7 +404,7 @@ export function InventoryPage() {
           }`}
         >
           <History className="h-4 w-4" />
-          Libro Mayor Kardex
+          Kardez
         </button>
       </div>
 
@@ -421,8 +430,19 @@ export function InventoryPage() {
                   type="search"
                   value={stockSearchInput}
                   onChange={(e) => setStockSearchInput(e.target.value)}
-                  placeholder="Buscar por SKU o Producto..."
+                  placeholder="Buscar por Producto..."
                   className="w-full rounded-xl border border-[var(--border-subtle)] bg-canvas py-2 pr-3 pl-9 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-hidden"
+                />
+              </div>
+
+              {/* SKU filter input */}
+              <div className="relative w-full sm:w-44">
+                <input
+                  type="text"
+                  value={stockSkuInput}
+                  onChange={(e) => setStockSkuInput(e.target.value)}
+                  placeholder="Filtrar por SKU..."
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-canvas py-2 px-3 font-mono text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-hidden"
                 />
               </div>
 
@@ -466,7 +486,7 @@ export function InventoryPage() {
                 <Filter className="h-3.5 w-3.5" />
                 Filtrar
               </button>
-              {(stockSearchApplied || stockCategoryFilter !== undefined || stockLowStockOnly) && (
+              {(stockSearchApplied || stockSkuApplied || stockCategoryFilter !== undefined || stockLowStockOnly) && (
                 <button
                   type="button"
                   onClick={handleStockReset}
@@ -640,7 +660,7 @@ export function InventoryPage() {
       {activeTab === 'kardex' && (
         <section aria-labelledby="kardex-heading" className="space-y-6">
           <h2 id="kardex-heading" className="sr-only">
-            Libro Mayor Kardex e Historial de Movimientos Auditados
+            Kardez e Historial de Movimientos Auditados
           </h2>
 
           {/* Kardex Filters Bar */}
@@ -649,6 +669,17 @@ export function InventoryPage() {
             className="flex flex-col gap-3 rounded-2xl border border-[var(--border-subtle)] bg-surface p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+              {/* SKU filter */}
+              <div className="relative w-full sm:w-44">
+                <input
+                  type="text"
+                  value={kardexSkuFilter}
+                  onChange={(e) => setKardexSkuFilter(e.target.value)}
+                  placeholder="Filtrar por SKU..."
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-canvas py-2 px-3 font-mono text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-hidden"
+                />
+              </div>
+
               {/* Movement Type Filter */}
               <select
                 value={kardexMovementFilter}
@@ -693,9 +724,9 @@ export function InventoryPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-900"
               >
                 <Filter className="h-3.5 w-3.5" />
-                Filtrar Kardex
+                Filtrar Kardez
               </button>
-              {(kardexMovementFilter || kardexStartDate || kardexEndDate) && (
+              {(kardexMovementFilter || kardexStartDate || kardexEndDate || kardexSkuFilter) && (
                 <button
                   type="button"
                   onClick={handleKardexReset}
@@ -717,7 +748,7 @@ export function InventoryPage() {
                   className="h-14 w-full rounded-xl border border-[var(--border-subtle)] bg-surface animate-pulse"
                 />
               ))}
-              <span className="sr-only">Cargando registros del Libro Mayor Kardex...</span>
+              <span className="sr-only">Cargando registros del Kardez...</span>
             </div>
           ) : kardexError ? (
             <div
@@ -726,7 +757,7 @@ export function InventoryPage() {
             >
               <AlertCircle className="h-10 w-10 text-crimson-600" />
               <h3 className="mt-3 text-base font-bold text-[var(--text-primary)]">
-                Error al consultar Kardex
+                Error al consultar Kardez
               </h3>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">{kardexError}</p>
               <button
@@ -742,7 +773,7 @@ export function InventoryPage() {
             <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-surface p-8 text-center">
               <History className="h-10 w-10 text-[var(--text-muted)]" />
               <h3 className="mt-3 text-base font-bold text-[var(--text-primary)]">
-                No hay movimientos de Kardex registrados
+                No hay movimientos de Kardez registrados
               </h3>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">
                 No se encontraron transacciones con los filtros seleccionados.
@@ -780,7 +811,12 @@ export function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
-                  {kardexItems.map((entry) => {
+                  {kardexItems
+                    .filter((entry) =>
+                      !kardexSkuFilter.trim() ||
+                      entry.SKU.toLowerCase().includes(kardexSkuFilter.trim().toLowerCase())
+                    )
+                    .map((entry) => {
                     const meta = getKardexMeta(entry.MovementType);
                     const formattedDate = new Date(entry.MovementDate).toLocaleString('es-GT', {
                       year: 'numeric',
@@ -888,8 +924,8 @@ export function InventoryPage() {
       <ModalDialog
         isOpen={isAdjustmentModalOpen}
         onClose={handleCloseAdjustmentModal}
-        title="Ajuste Manual de Inventario (Kardex)"
-        subtitle="Registra una entrada física o salida por merma. Este movimiento es inmutable y genera una entrada auditable en el Libro Mayor Kardex."
+        title="Ajuste Manual de Inventario (Kardez)"
+        subtitle="Registra una entrada física o salida por merma. Este movimiento es inmutable y genera una entrada auditable en el Kardez."
       >
         {selectedVariant && (
           <form onSubmit={handleSubmitAdjustment} className="space-y-4">
@@ -1070,7 +1106,7 @@ export function InventoryPage() {
                 {isSubmittingAdjustment ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Registrando en Kardex...
+                    Registrando en Kardez...
                   </>
                 ) : (
                   <>
@@ -1083,6 +1119,13 @@ export function InventoryPage() {
           </form>
         )}
       </ModalDialog>
+
+      {/* Rhino Loader Overlay for Inventory Adjustment Submission */}
+      <RhinoLoaderOverlay
+        isOpen={isSubmittingAdjustment}
+        title="Actualizando Inventario en SQL Server..."
+        subtitle="Asentando movimiento inmutable en el Kardez..."
+      />
     </div>
   );
 }

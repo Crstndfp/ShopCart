@@ -76,13 +76,17 @@ export const orderApi = {
     id: number,
     payload: ProcessReturnPayload
   ): Promise<OrderDetailResult> {
-    const response = await apiRequest<ApiSuccessResponse<OrderDetailResult>>(
-      `/api/v1/orders/${id}/returns`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }
-    );
-    return response.data;
+    const response = await apiRequest<
+      ApiSuccessResponse<{ idReturn: number; order: OrderDetailResult } | OrderDetailResult>
+    >(`/api/v1/orders/${id}/returns`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    const data = response.data;
+    if (data && typeof data === 'object' && 'idReturn' in data) {
+      return (data as { idReturn: number; order: OrderDetailResult }).order;
+    }
+    return data as OrderDetailResult;
   },
 };

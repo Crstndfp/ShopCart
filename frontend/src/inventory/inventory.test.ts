@@ -46,7 +46,7 @@ describe('Inventory Domain & Kardex Logic', () => {
       const statusCritical1 = formatStockStatus(1);
       expect(statusCritical1.label).toBe('Stock Crítico');
       expect(statusCritical1.isLow).toBe(true);
-      expect(statusCritical1.colorClass).toContain('amber');
+      expect(statusCritical1.colorClass).toContain('crimson');
 
       const statusCritical5 = formatStockStatus(5);
       expect(statusCritical5.label).toBe('Stock Crítico');
