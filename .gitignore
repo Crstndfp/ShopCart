@@ -39,6 +39,7 @@ dist/
 build/
 out/
 .next/
+.vite/
 
 # Environment variables
 .env
