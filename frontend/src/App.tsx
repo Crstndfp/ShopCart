@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AddressesPage } from './pages/AddressesPage.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
 import { AdminCouponsPage } from './pages/AdminCouponsPage.js';
+import { AdminReportsPage } from './pages/AdminReportsPage.js';
 import { CartPage } from './pages/CartPage.js';
 import { CatalogPage } from './pages/CatalogPage.js';
 import { CheckoutPage } from './pages/CheckoutPage.js';
@@ -119,12 +120,7 @@ export function App() {
               path="/admin/reports"
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-09 · REPORTES Y DASHBOARD EJECUTIVO"
-                    title="Dashboard Ejecutivo y Reportes Analíticos"
-                    description="Indicadores de ventas por período, top productos, valoración de inventario, efectividad de cupones y carritos abandonados."
-                    allowedRoles={['ADMINISTRATOR']}
-                  />
+                  <AdminReportsPage />
                 </ProtectedRoute>
               }
             />
