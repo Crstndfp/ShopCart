@@ -6,6 +6,7 @@ import { AddressesPage } from './pages/AddressesPage.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
 import { AdminCouponsPage } from './pages/AdminCouponsPage.js';
 import { AdminReportsPage } from './pages/AdminReportsPage.js';
+import { AdminUsersPage } from './pages/AdminUsersPage.js';
 import { CartPage } from './pages/CartPage.js';
 import { CatalogPage } from './pages/CatalogPage.js';
 import { CheckoutPage } from './pages/CheckoutPage.js';
@@ -107,12 +108,7 @@ export function App() {
               path="/admin/users"
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRATOR']}>
-                  <ModuleViewPage
-                    rfCode="RF-01 · GESTIÓN DE USUARIOS Y ROLES"
-                    title="Administración de Usuarios del Sistema"
-                    description="Alta de cuentas de Operador y Administrador, consulta de usuarios y activación/desactivación de accesos."
-                    allowedRoles={['ADMINISTRATOR']}
-                  />
+                  <AdminUsersPage />
                 </ProtectedRoute>
               }
             />
