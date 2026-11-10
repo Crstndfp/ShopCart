@@ -23,6 +23,8 @@ import { couponApi } from '../api/coupon.api.js';
 import { orderApi } from '../api/order.api.js';
 import { HttpError } from '../api/http-client.js';
 import { ModalDialog } from '../components/ui/ModalDialog.js';
+import { PhoneInputWithCountry } from '../components/ui/PhoneInputWithCountry.js';
+import { translateBackendError } from '../utils/i18n-errors.js';
 import { formatGTQ } from '../types/catalog.types.js';
 import { formatAddressSummary, type AddressRecord, type CreateAddressPayload } from '../types/address.types.js';
 import type { CartData } from '../types/cart.types.js';
@@ -251,10 +253,10 @@ export function CheckoutPage() {
 
       setCompletedOrder(result);
     } catch (err) {
-      const msg =
-        err instanceof HttpError
-          ? err.message
-          : 'Error al procesar la orden en SQL Server. Verifica la disponibilidad de stock.';
+      const msg = translateBackendError(
+        err,
+        'Error al procesar la orden en SQL Server. Verifica la disponibilidad de stock.'
+      );
       setOrderError(msg);
     } finally {
       setIsSubmittingOrder(false);
@@ -903,18 +905,19 @@ export function CheckoutPage() {
 
           <div>
             <label htmlFor="chk-phone" className="block font-semibold text-[var(--text-primary)]">
-              Teléfono de Contacto (Mín. 8 dígitos)
+              Teléfono de Contacto (Código y 8 dígitos)
             </label>
-            <input
-              id="chk-phone"
-              type="tel"
-              required
-              minLength={8}
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              placeholder="+502 5555-1234"
-              className="mt-1 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3 py-1.5 font-mono text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
-            />
+            <div className="mt-1">
+              <PhoneInputWithCountry
+                id="chk-phone"
+                value={newPhone}
+                onChange={setNewPhone}
+                required
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+              Seleccione el código de país e ingrese los 8 dígitos correspondientes.
+            </p>
           </div>
 
           {modalFeedback && (

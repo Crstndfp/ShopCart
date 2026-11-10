@@ -23,6 +23,7 @@ import { couponApi } from '../api/coupon.api.js';
 import { HttpError } from '../api/http-client.js';
 import { useAuth } from '../context/AuthContext.js';
 import { formatGTQ } from '../types/catalog.types.js';
+import { translateBackendError } from '../utils/i18n-errors.js';
 import {
   calculateCartItemCount,
   formatCartItemAttributes,
@@ -83,7 +84,7 @@ export function CartPage() {
         });
       }
     } catch (err) {
-      const msg = err instanceof HttpError ? err.message : 'Error al validar el cupón.';
+      const msg = translateBackendError(err, 'Error al validar el cupón promocional.');
       setAppliedCoupon(null);
       setCouponFeedback({ message: msg, isError: true });
     } finally {
@@ -122,7 +123,7 @@ export function CartPage() {
   }, [fetchCart]);
 
   // -------------------------------------------------------------
-  // Quantity Modifications (+ / - / delete)
+  // Quantity Modifications (+ / - / delete) with Optimistic State
   // -------------------------------------------------------------
   const handleUpdateQuantity = async (item: CartItem, newQty: number) => {
     if (newQty <= 0) {
@@ -130,27 +131,54 @@ export function CartPage() {
       return;
     }
     if (newQty > item.AvailableStock) {
+      setErrorMessage(
+        `Existencias limitadas: Solo hay ${item.AvailableStock} unidad(es) disponible(s) en bodega.`
+      );
       return;
     }
 
+    const previousCart = cartData;
+    // Optimistic local state update to avoid heavy response waiting
+    setCartData((prev) => {
+      if (!prev) return prev;
+      const updatedItems = prev.items.map((i) =>
+        i.IDVariant === item.IDVariant
+          ? { ...i, Quantity: newQty, LineTotal: i.UnitPrice * newQty }
+          : i
+      );
+      return { ...prev, items: updatedItems };
+    });
+
     setUpdatingVariantId(item.IDVariant);
     try {
-      const updated = await cartApi.updateItemQuantity(item.IDVariant, newQty);
-      setCartData(updated);
+      await cartApi.updateItemQuantity(item.IDVariant, newQty);
     } catch (err) {
-      console.error('Error updating cart item quantity:', err);
+      setCartData(previousCart);
+      const msg = translateBackendError(err, 'Error al actualizar la cantidad del producto.');
+      setErrorMessage(msg);
     } finally {
       setUpdatingVariantId(null);
     }
   };
 
   const handleRemoveItem = async (variantId: number) => {
+    const previousCart = cartData;
+    // Optimistic local state removal
+    setCartData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.filter((i) => i.IDVariant !== variantId),
+      };
+    });
+
     setUpdatingVariantId(variantId);
     try {
-      const updated = await cartApi.removeItem(variantId);
-      setCartData(updated);
+      await cartApi.removeItem(variantId);
     } catch (err) {
-      console.error('Error removing item from cart:', err);
+      setCartData(previousCart);
+      const msg = translateBackendError(err, 'Error al remover el producto del carrito.');
+      setErrorMessage(msg);
     } finally {
       setUpdatingVariantId(null);
     }

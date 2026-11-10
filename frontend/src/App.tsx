@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute.js';
 import { AppLayout } from './components/layout/AppLayout.js';
-import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { AuthProvider } from './context/AuthContext.js';
 import { AddressesPage } from './pages/AddressesPage.js';
 import { AdminAuditPage } from './pages/AdminAuditPage.js';
 import { AdminCatalogPage } from './pages/AdminCatalogPage.js';
@@ -17,14 +17,9 @@ import { LoginPage } from './pages/LoginPage.js';
 import { MyOrdersPage } from './pages/MyOrdersPage.js';
 import { OrdersManagementPage } from './pages/OrdersManagementPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
-import { getDefaultRouteForRole } from './types/auth.types.js';
 
 function RootRedirect() {
-  const { isAuthenticated, user } = useAuth();
-  if (!isAuthenticated || !user) {
-    return <Navigate to="/catalog" replace />;
-  }
-  return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
+  return <Navigate to="/catalog" replace />;
 }
 
 export function App() {

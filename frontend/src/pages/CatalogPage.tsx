@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowUpDown,
   CheckCircle2,
   ChevronLeft,
@@ -23,6 +24,7 @@ import { catalogApi } from '../api/catalog.api.js';
 import { HttpError } from '../api/http-client.js';
 import { ModalDialog } from '../components/ui/ModalDialog.js';
 import { useAuth } from '../context/AuthContext.js';
+import { translateBackendError } from '../utils/i18n-errors.js';
 import {
   formatGTQ,
   formatPriceRangeGTQ,
@@ -156,7 +158,7 @@ export function CatalogPage() {
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [cartFeedback, setCartFeedback] = useState<{
-    type: 'success' | 'error';
+    type: 'success' | 'error' | 'warning';
     message: string;
   } | null>(null);
 
@@ -280,6 +282,15 @@ export function CatalogPage() {
 
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
+
+    if (quantity > selectedVariant.AvailableStock) {
+      setCartFeedback({
+        type: 'warning',
+        message: `Existencias limitadas: No puedes agregar ${quantity} unidades porque solo hay ${selectedVariant.AvailableStock} disponible(s) en bodega.`,
+      });
+      return;
+    }
+
     setIsAddingToCart(true);
     setCartFeedback(null);
 
@@ -290,17 +301,13 @@ export function CatalogPage() {
         message: `Se agregaron ${quantity} unidad(es) de SKU ${selectedVariant.SKU} a tu carrito.`,
       });
     } catch (error) {
-      if (error instanceof HttpError) {
-        setCartFeedback({
-          type: 'error',
-          message: error.message,
-        });
-      } else {
-        setCartFeedback({
-          type: 'error',
-          message: 'No se pudo agregar el producto al carrito.',
-        });
-      }
+      setCartFeedback({
+        type: 'error',
+        message: translateBackendError(
+          error,
+          'No se pudo agregar el producto al carrito.'
+        ),
+      });
     } finally {
       setIsAddingToCart(false);
     }
@@ -686,7 +693,7 @@ export function CatalogPage() {
                           className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-brand-900"
                         >
                           <Eye className="h-3.5 w-3.5" />
-                          Ver Variantes
+                          Ver Opciones
                         </button>
                       </div>
                     </article>
@@ -769,7 +776,7 @@ export function CatalogPage() {
                             className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-900"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            Ver Variantes
+                            Ver Opciones
                           </button>
                         </div>
                       </div>
@@ -844,7 +851,7 @@ export function CatalogPage() {
             {/* Variants Selection List */}
             <div>
               <h3 className="text-xs font-bold tracking-wider uppercase text-[var(--text-muted)]">
-                Selecciona una Variante (SKU)
+                Selecciona una Opción (SKU)
               </h3>
 
               <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -915,12 +922,16 @@ export function CatalogPage() {
                 className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3.5 text-xs ${
                   cartFeedback.type === 'success'
                     ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
-                    : 'border-crimson-600/40 bg-crimson-600/10 text-crimson-600'
+                    : cartFeedback.type === 'warning'
+                      ? 'border-amber-500/40 bg-amber-500/10 text-amber-500'
+                      : 'border-crimson-600/40 bg-crimson-600/10 text-crimson-600'
                 }`}
               >
                 <div className="flex items-center gap-2 font-medium">
                   {cartFeedback.type === 'success' ? (
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  ) : cartFeedback.type === 'warning' ? (
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                   ) : (
                     <AlertCircle className="h-4 w-4 shrink-0" />
                   )}
@@ -958,8 +969,16 @@ export function CatalogPage() {
                       const val = Number.parseInt(e.target.value, 10);
                       if (Number.isNaN(val) || val < 1) {
                         setQuantity(1);
+                        setCartFeedback(null);
+                      } else if (val > selectedVariant.AvailableStock) {
+                        setQuantity(selectedVariant.AvailableStock);
+                        setCartFeedback({
+                          type: 'warning',
+                          message: `Existencias limitadas: Solo hay ${selectedVariant.AvailableStock} unidad(es) disponible(s) en bodega para esta opción.`,
+                        });
                       } else {
-                        setQuantity(Math.min(val, Math.max(1, selectedVariant.AvailableStock)));
+                        setQuantity(val);
+                        setCartFeedback(null);
                       }
                     }}
                     className="w-20 rounded-lg border border-[var(--border-strong)] bg-surface px-3 py-1.5 text-center font-mono text-sm font-bold text-[var(--text-primary)]"
@@ -985,7 +1004,7 @@ export function CatalogPage() {
                       <ShoppingCart className="h-4 w-4" />
                       {selectedVariant.AvailableStock > 0
                         ? 'Agregar al Carrito'
-                        : 'Variante sin Stock'}
+                        : 'Opción sin Stock'}
                     </>
                   )}
                 </button>

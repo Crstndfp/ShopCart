@@ -13,6 +13,8 @@ import {
 import { addressApi } from '../api/address.api.js';
 import { HttpError } from '../api/http-client.js';
 import { ModalDialog } from '../components/ui/ModalDialog.js';
+import { PhoneInputWithCountry } from '../components/ui/PhoneInputWithCountry.js';
+import { translateBackendError } from '../utils/i18n-errors.js';
 import {
   formatAddressSummary,
   type AddressRecord,
@@ -120,10 +122,10 @@ export function AddressesPage() {
         handleCloseModal();
       }, 1000);
     } catch (err) {
-      const msg =
-        err instanceof HttpError
-          ? err.message
-          : 'Error al guardar la dirección en el servidor.';
+      const msg = translateBackendError(
+        err,
+        'Error al guardar la dirección en el servidor.'
+      );
       setModalFeedback({ type: 'error', message: msg });
     } finally {
       setIsSubmitting(false);
@@ -389,22 +391,22 @@ export function AddressesPage() {
             </div>
           </div>
 
-          {/* Contact Phone */}
+          {/* Contact Phone with Country Code and Strict Mask */}
           <div>
             <label htmlFor="addr-phone" className="block font-semibold text-[var(--text-primary)]">
-              Teléfono de Contacto (Mín. 8 dígitos)
+              Teléfono de Contacto (Código y 8 dígitos)
             </label>
-            <input
-              id="addr-phone"
-              type="tel"
-              required
-              minLength={8}
-              maxLength={30}
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              placeholder="+502 5555-1234"
-              className="mt-1.5 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3.5 py-2 font-mono text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-hidden"
-            />
+            <div className="mt-1.5">
+              <PhoneInputWithCountry
+                id="addr-phone"
+                value={contactPhone}
+                onChange={setContactPhone}
+                required
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+              Seleccione el código de país e ingrese los 8 dígitos correspondientes.
+            </p>
           </div>
 
           {/* Modal Feedback Alert */}

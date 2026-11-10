@@ -21,6 +21,8 @@ import {
 import { userAdminApi } from '../api/user-admin.api.js';
 import { HttpError } from '../api/http-client.js';
 import { ModalDialog } from '../components/ui/ModalDialog.js';
+import { PhoneInputWithCountry } from '../components/ui/PhoneInputWithCountry.js';
+import { translateBackendError } from '../utils/i18n-errors.js';
 import {
   getRoleMeta,
   validatePasswordStrength,
@@ -155,8 +157,10 @@ export function AdminUsersPage() {
       setCreateRoleCode('OPERATOR');
       void fetchUsers();
     } catch (err) {
-      const msg =
-        err instanceof HttpError ? err.message : 'Error al registrar el usuario en el sistema.';
+      const msg = translateBackendError(
+        err,
+        'Error al registrar el usuario en el sistema.'
+      );
       setCreateError(msg);
     } finally {
       setIsSubmittingCreate(false);
@@ -179,8 +183,10 @@ export function AdminUsersPage() {
       setSelectedUserForRole(null);
       void fetchUsers();
     } catch (err) {
-      const msg =
-        err instanceof HttpError ? err.message : 'Error al actualizar el rol del usuario.';
+      const msg = translateBackendError(
+        err,
+        'Error al actualizar el rol del usuario.'
+      );
       setRoleError(msg);
     } finally {
       setIsSubmittingRole(false);
@@ -217,8 +223,10 @@ export function AdminUsersPage() {
       setStatusReason('');
       void fetchUsers();
     } catch (err) {
-      const msg =
-        err instanceof HttpError ? err.message : 'Error al actualizar el estado del usuario.';
+      const msg = translateBackendError(
+        err,
+        'Error al actualizar el estado del usuario.'
+      );
       setStatusActionError(msg);
     } finally {
       setIsSubmittingStatus(false);
@@ -644,15 +652,14 @@ export function AdminUsersPage() {
 
               <div>
                 <label className="block text-xs font-medium text-slate-300">
-                  Teléfono (Opcional):
+                  Teléfono (Código y 8 dígitos):
                 </label>
-                <input
-                  type="text"
-                  value={createPhone}
-                  onChange={(e) => setCreatePhone(e.target.value)}
-                  placeholder="502 5555-1234"
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
-                />
+                <div className="mt-1">
+                  <PhoneInputWithCountry
+                    value={createPhone}
+                    onChange={setCreatePhone}
+                  />
+                </div>
               </div>
             </div>
 
