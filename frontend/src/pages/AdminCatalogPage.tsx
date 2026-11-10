@@ -17,6 +17,7 @@ import {
 import { catalogApi } from '../api/catalog.api.js';
 import { HttpError } from '../api/http-client.js';
 import { ModalDialog } from '../components/ui/ModalDialog.js';
+import { translateBackendError } from '../utils/i18n-errors.js';
 import {
   formatGTQ,
   formatPriceRangeGTQ,
@@ -42,6 +43,15 @@ export function AdminCatalogPage() {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+
+  // Variant Modal Feedback Banner
+  const [variantModalBanner, setVariantModalBanner] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  // Product Confirmation Modal for Deactivation
+  const [productToDeactivate, setProductToDeactivate] = useState<CatalogProductSummary | null>(null);
 
   // Categories State
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -227,11 +237,13 @@ export function AdminCatalogPage() {
     setVarInitialStock('10');
     setVarIsActive(true);
     setVarAttributes([{ key: 'Modelo', value: 'Estándar' }]);
+    setVariantModalBanner(null);
   };
 
   const handleOpenVariantsModal = async (idProduct: number) => {
     setVariantsProductId(idProduct);
     setVariantsProductDetail(null);
+    setVariantModalBanner(null);
     resetVariantForm();
     setIsLoadingVariants(true);
 
@@ -254,6 +266,7 @@ export function AdminCatalogPage() {
     setVarSku(variant.SKU);
     setVarPrice(String(variant.Price));
     setVarIsActive(Boolean(variant.IsActive));
+    setVariantModalBanner(null);
     const parsed = parseVariantAttributes(variant);
     const pairs = Object.entries(parsed).map(([key, value]) => ({ key, value }));
     setVarAttributes(pairs.length > 0 ? pairs : [{ key: 'Atributo', value: 'Valor' }]);
@@ -263,6 +276,8 @@ export function AdminCatalogPage() {
     event.preventDefault();
     if (!variantsProductId) return;
 
+    setVariantModalBanner(null);
+
     const attributesRecord: Record<string, string> = {};
     for (const pair of varAttributes) {
       if (pair.key.trim() && pair.value.trim()) {
@@ -271,7 +286,7 @@ export function AdminCatalogPage() {
     }
 
     if (Object.keys(attributesRecord).length === 0) {
-      setStatusBanner({
+      setVariantModalBanner({
         type: 'error',
         message: 'Debes definir al menos un atributo clave-valor para la variante (ej. Color, Talla).',
       });
@@ -280,49 +295,85 @@ export function AdminCatalogPage() {
 
     const numericPrice = Number.parseFloat(varPrice);
     if (Number.isNaN(numericPrice) || numericPrice < 0) {
-      setStatusBanner({
+      setVariantModalBanner({
         type: 'error',
         message: 'El precio debe ser un monto válido mayor o igual a Q0.00.',
       });
       return;
     }
 
+    const cleanSku = varSku.trim().toUpperCase();
+    if (!cleanSku) {
+      setVariantModalBanner({
+        type: 'error',
+        message: 'El código SKU es obligatorio.',
+      });
+      return;
+    }
+
+    // Validate SKU uniqueness within the current product's variants
+    const duplicateVariant = variantsProductDetail?.Variants?.find((v) => {
+      if (editingVariantId !== null && v.IDVariant === editingVariantId) {
+        return false;
+      }
+      return v.SKU.trim().toUpperCase() === cleanSku;
+    });
+
+    if (duplicateVariant) {
+      setVariantModalBanner({
+        type: 'error',
+        message: `El SKU "${cleanSku}" ya pertenece a una variante de este producto (Variante #${duplicateVariant.IDVariant}). Ingrese un SKU único.`,
+      });
+      return;
+    }
+
     setIsSavingVariant(true);
-    setStatusBanner(null);
 
     try {
+      let successMsg = '';
       if (editingVariantId === null) {
         const initialStock = Math.max(0, Number.parseInt(varInitialStock, 10) || 0);
         await catalogApi.createVariant(variantsProductId, {
-          sku: varSku.trim().toUpperCase(),
+          sku: cleanSku,
           attributes: attributesRecord,
           price: numericPrice,
           initialStock,
         });
-        setStatusBanner({
-          type: 'success',
-          message: `Variante SKU "${varSku.toUpperCase()}" creada con precio ${formatGTQ(numericPrice)} y stock inicial ${initialStock}.`,
-        });
+        successMsg = `Variante SKU "${cleanSku}" creada exitosamente con precio ${formatGTQ(numericPrice)} y stock inicial ${initialStock}.`;
       } else {
         await catalogApi.updateVariant(editingVariantId, {
           attributes: attributesRecord,
           price: numericPrice,
           isActive: varIsActive,
         });
-        setStatusBanner({
-          type: 'success',
-          message: `Variante #${editingVariantId} actualizada a ${formatGTQ(numericPrice)} (registrado en AuditLog).`,
-        });
+        successMsg = `Variante #${editingVariantId} (${cleanSku}) actualizada exitosamente a ${formatGTQ(numericPrice)}.`;
       }
+
+      setVariantModalBanner({
+        type: 'success',
+        message: successMsg,
+      });
+      setStatusBanner({
+        type: 'success',
+        message: successMsg,
+      });
 
       const refreshed = await catalogApi.getProductById(variantsProductId);
       setVariantsProductDetail(refreshed);
       resetVariantForm();
       await loadProducts();
+
+      // Automatically close modal after brief visual feedback so user sees the updated list
+      setTimeout(() => {
+        setVariantsProductId(null);
+        setVariantsProductDetail(null);
+        setVariantModalBanner(null);
+      }, 1000);
     } catch (error) {
-      setStatusBanner({
+      const msg = error instanceof HttpError ? translateBackendError(error.message) : 'Error al guardar la variante.';
+      setVariantModalBanner({
         type: 'error',
-        message: error instanceof HttpError ? error.message : 'Error al guardar la variante.',
+        message: msg,
       });
     } finally {
       setIsSavingVariant(false);
@@ -620,7 +671,7 @@ export function AdminCatalogPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => void handleDeactivateProduct(prod)}
+                            onClick={() => setProductToDeactivate(prod)}
                             title="Desactivar lógicamente (preserva historial de ventas)"
                             className="inline-flex items-center gap-1 rounded-lg border border-crimson-600/40 bg-crimson-600/10 px-2.5 py-1.5 text-xs font-semibold text-crimson-600 hover:bg-crimson-600 hover:text-white"
                           >
@@ -944,6 +995,25 @@ export function AdminCatalogPage() {
               )}
             </div>
 
+            {/* Modal Internal Feedback Banner */}
+            {variantModalBanner && (
+              <div
+                role="alert"
+                className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-xs ${
+                  variantModalBanner.type === 'success'
+                    ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
+                    : 'border-crimson-600/40 bg-crimson-950/40 text-red-300'
+                }`}
+              >
+                {variantModalBanner.type === 'success' ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 shrink-0 text-crimson-400 mt-0.5" />
+                )}
+                <span>{variantModalBanner.message}</span>
+              </div>
+            )}
+
             {/* Create / Edit Variant Form */}
             <form
               onSubmit={handleSaveVariant}
@@ -1226,6 +1296,53 @@ export function AdminCatalogPage() {
             </button>
           </div>
         </form>
+      </ModalDialog>
+
+      {/* MODAL 4: Confirm Product Deactivation */}
+      <ModalDialog
+        isOpen={productToDeactivate !== null}
+        onClose={() => setProductToDeactivate(null)}
+        title="Confirmar Desactivación de Producto"
+        subtitle="Esta acción retirará el producto del catálogo público preservando el historial transaccional de órdenes y auditoría."
+      >
+        {productToDeactivate && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-crimson-600/30 bg-canvas p-4 text-xs text-[var(--text-secondary)]">
+              <p className="font-semibold text-[var(--text-primary)]">
+                ¿Confirmas la baja lógica del siguiente producto?
+              </p>
+              <p className="mt-1 font-mono text-sm font-bold text-primary">
+                {productToDeactivate.ProductName} (ID #{productToDeactivate.IDProduct})
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                Categoría: {productToDeactivate.CategoryName} · Stock disponible:{' '}
+                {productToDeactivate.TotalAvailableStock} unidades
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">
+              <button
+                type="button"
+                onClick={() => setProductToDeactivate(null)}
+                className="rounded-xl border border-[var(--border-strong)] bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const prod = productToDeactivate;
+                  setProductToDeactivate(null);
+                  await handleDeactivateProduct(prod);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-crimson-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-crimson-700"
+              >
+                <Ban className="h-3.5 w-3.5" />
+                Confirmar Desactivación
+              </button>
+            </div>
+          </div>
+        )}
       </ModalDialog>
     </div>
   );

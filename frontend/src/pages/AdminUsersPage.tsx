@@ -100,7 +100,7 @@ export function AdminUsersPage() {
     } catch (err) {
       const msg =
         err instanceof HttpError
-          ? err.message
+          ? translateBackendError(err.message)
           : 'Error al consultar la lista de usuarios en SQL Server.';
       setErrorMessage(msg);
     } finally {
@@ -119,121 +119,115 @@ export function AdminUsersPage() {
     setPage(1);
   };
 
-  // Handle Create User
+  // Create User Handler
   const handleCreateSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setCreateError(null);
 
-    if (createFullName.trim().length < 3) {
-      setCreateError('El nombre completo debe tener al menos 3 caracteres.');
-      return;
-    }
-
-    const strength = validatePasswordStrength(createPassword);
-    if (!strength.isValid) {
-      setCreateError(`Contraseña no cumple requisitos: ${strength.errors.join(', ')}.`);
+    const passwordValidation = validatePasswordStrength(createPassword);
+    if (!passwordValidation.isValid) {
+      setCreateError(passwordValidation.errors.join('. ') || 'La contraseña no cumple los requisitos mínimos.');
       return;
     }
 
     setIsSubmittingCreate(true);
-    try {
-      const payload: CreateUserAdminPayload = {
-        fullName: createFullName.trim(),
-        email: createEmail.trim(),
-        password: createPassword,
-        roleCode: createRoleCode,
-        phoneNumber: createPhone.trim() || undefined,
-      };
 
-      await userAdminApi.createUser(payload);
-      setSuccessMessage(
-        `Usuario "${payload.fullName}" creado exitosamente con rol ${payload.roleCode}.`
-      );
+    const payload: CreateUserAdminPayload = {
+      fullName: createFullName.trim(),
+      email: createEmail.trim().toLowerCase(),
+      password: createPassword,
+      roleCode: createRoleCode,
+      phoneNumber: createPhone.trim() || undefined,
+    };
+
+    try {
+      const created = await userAdminApi.createUser(payload);
+      setSuccessMessage(`Usuario "${created.FullName}" (#${created.IDUser}) creado exitosamente con rol ${created.RoleCode}.`);
       setIsCreateOpen(false);
+      // Reset form
       setCreateFullName('');
       setCreateEmail('');
       setCreatePassword('');
-      setCreatePhone('');
       setCreateRoleCode('OPERATOR');
+      setCreatePhone('');
       void fetchUsers();
     } catch (err) {
-      const msg = translateBackendError(
-        err,
-        'Error al registrar el usuario en el sistema.'
-      );
+      const msg =
+        err instanceof HttpError
+          ? translateBackendError(err.message)
+          : 'Error al crear la cuenta de usuario en SQL Server.';
       setCreateError(msg);
     } finally {
       setIsSubmittingCreate(false);
     }
   };
 
-  // Handle Role Change
+  // Role Change Handler
   const handleRoleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedUserForRole) return;
 
-    setIsSubmittingRole(true);
     setRoleError(null);
+    setIsSubmittingRole(true);
 
     try {
-      await userAdminApi.updateRole(selectedUserForRole.IDUser, { roleCode: newRoleCode });
-      setSuccessMessage(
-        `Rol del usuario "${selectedUserForRole.FullName}" actualizado exitosamente a ${newRoleCode}.`
-      );
+      const updated = await userAdminApi.updateRole(selectedUserForRole.IDUser, {
+        roleCode: newRoleCode,
+      });
+      setSuccessMessage(`Rol de "${updated.FullName}" actualizado a ${updated.RoleCode}. Registro asentado en bitácora.`);
       setSelectedUserForRole(null);
       void fetchUsers();
     } catch (err) {
-      const msg = translateBackendError(
-        err,
-        'Error al actualizar el rol del usuario.'
-      );
+      const msg =
+        err instanceof HttpError
+          ? translateBackendError(err.message)
+          : 'Error al actualizar el rol del usuario en SQL Server.';
       setRoleError(msg);
     } finally {
       setIsSubmittingRole(false);
     }
   };
 
-  // Handle Status Change (Deactivate / Activate)
+  // Status Change Handler (Deactivate / Activate)
   const handleStatusSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedUserForStatus) return;
 
-    const targetIsActive = !selectedUserForStatus.IsActive;
+    setStatusActionError(null);
 
-    if (!targetIsActive && statusReason.trim().length < 3) {
-      setStatusActionError('Para desactivar la cuenta debe ingresar un motivo válido (mín. 3 caracteres).');
+    const willBeActive = !selectedUserForStatus.IsActive;
+
+    if (!willBeActive && statusReason.trim().length < 3) {
+      setStatusActionError('Para desactivar una cuenta es obligatorio especificar un motivo (mínimo 3 caracteres).');
       return;
     }
 
     setIsSubmittingStatus(true);
-    setStatusActionError(null);
 
     try {
-      await userAdminApi.updateStatus(selectedUserForStatus.IDUser, {
-        isActive: targetIsActive,
-        reason: !targetIsActive ? statusReason.trim() : undefined,
+      const updated = await userAdminApi.updateStatus(selectedUserForStatus.IDUser, {
+        isActive: willBeActive,
+        reason: willBeActive ? undefined : statusReason.trim(),
       });
-
       setSuccessMessage(
-        `La cuenta de "${selectedUserForStatus.FullName}" ahora está ${
-          targetIsActive ? 'ACTIVA' : 'INACTIVA'
+        `Cuenta de "${updated.FullName}" ${
+          updated.IsActive ? 'reactivada exitosamente' : 'desactivada lógicamente con motivo registrado'
         }.`
       );
       setSelectedUserForStatus(null);
-      setStatusReason('');
       void fetchUsers();
     } catch (err) {
-      const msg = translateBackendError(
-        err,
-        'Error al actualizar el estado del usuario.'
-      );
+      const msg =
+        err instanceof HttpError
+          ? translateBackendError(err.message)
+          : 'Error al actualizar el estado de la cuenta en SQL Server.';
       setStatusActionError(msg);
     } finally {
       setIsSubmittingStatus(false);
     }
   };
 
-  // KPIs
+  // KPI calculations
   const kpiAdmins = users.filter((u) => u.RoleCode === 'ADMINISTRATOR').length;
   const kpiOperators = users.filter((u) => u.RoleCode === 'OPERATOR').length;
   const kpiClients = users.filter((u) => u.RoleCode === 'CLIENT').length;
@@ -241,23 +235,23 @@ export function AdminUsersPage() {
   const totalPages = Math.ceil(total / limit) || 1;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10 space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 border-b border-[var(--border-subtle)] pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-950/60 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-purple-400">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-purple-500/30 bg-purple-950/60 px-2.5 py-0.5 font-mono text-xs font-semibold text-purple-300">
               <Users className="h-3.5 w-3.5" />
               RF-01 · GESTIÓN DE USUARIOS Y ROLES
             </span>
-            <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2.5 py-0.5 text-xs text-slate-300">
+            <span className="rounded-md border border-[var(--border-subtle)] bg-surface px-2.5 py-0.5 font-mono text-xs text-[var(--text-secondary)]">
               Don Arturo · Seguridad RBAC
             </span>
           </div>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--text-primary)] sm:text-3xl">
             Administración de Usuarios y Permisos
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Alta y control de cuentas operativas y administrativas, asignación de roles y control de acceso.
           </p>
         </div>
@@ -267,12 +261,12 @@ export function AdminUsersPage() {
             type="button"
             onClick={() => void fetchUsers()}
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-surface px-3 py-2 text-xs font-semibold text-[var(--text-primary)] shadow-xs transition hover:border-primary hover:text-primary disabled:opacity-50"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-sky-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
             ) : (
-              <RotateCcw className="h-4 w-4 text-sky-400" />
+              <RotateCcw className="h-4 w-4 text-primary" />
             )}
             Actualizar
           </button>
@@ -283,25 +277,25 @@ export function AdminUsersPage() {
               setIsCreateOpen(true);
               setCreateError(null);
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500 bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow transition-colors hover:bg-purple-500"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-purple-700"
           >
             <UserPlus className="h-4 w-4" />
             Crear Usuario
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Success Notification */}
       {successMessage && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-4 text-sm text-emerald-300">
+        <div className="flex items-center justify-between rounded-xl border border-emerald-500/40 bg-surface p-4 text-xs text-emerald-600 dark:text-emerald-400">
           <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
             <span>{successMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setSuccessMessage(null)}
-            className="text-xs text-emerald-400 hover:text-white"
+            className="text-xs font-semibold text-emerald-500 hover:underline"
           >
             Cerrar
           </button>
@@ -310,76 +304,76 @@ export function AdminUsersPage() {
 
       {/* Error Notification */}
       {errorMessage && (
-        <div className="flex items-center gap-3 rounded-xl border border-crimson-600/40 bg-crimson-950/30 p-4 text-sm text-red-300">
-          <AlertCircle className="h-5 w-5 shrink-0 text-crimson-400" />
+        <div className="flex items-center gap-3 rounded-xl border border-crimson-600/40 bg-surface p-4 text-xs text-red-400">
+          <AlertCircle className="h-5 w-5 shrink-0 text-crimson-600" />
           <span>{errorMessage}</span>
         </div>
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Total Usuarios</span>
-            <Users className="h-4 w-4 text-slate-500" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-label="Métricas de cuentas de usuario">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-surface p-4 shadow-xs">
+          <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+            <span className="font-mono uppercase">Total Usuarios</span>
+            <Users className="h-4 w-4 text-primary" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-white">{total}</p>
-          <span className="text-xs text-slate-500">Cuentas registradas</span>
+          <p className="mt-2 text-2xl font-black text-[var(--text-primary)]">{total}</p>
+          <span className="text-[11px] text-[var(--text-muted)]">Cuentas registradas</span>
         </div>
 
-        <div className="rounded-xl border border-purple-500/20 bg-purple-950/20 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-purple-300">Administradores</span>
-            <ShieldCheck className="h-4 w-4 text-purple-400" />
+        <div className="rounded-2xl border border-purple-500/30 bg-surface p-4 shadow-xs">
+          <div className="flex items-center justify-between text-xs text-purple-500 dark:text-purple-300">
+            <span className="font-mono uppercase">Administradores</span>
+            <ShieldCheck className="h-4 w-4 text-purple-500 dark:text-purple-300" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-purple-300">{kpiAdmins}</p>
-          <span className="text-xs text-purple-500/80">Acceso total al sistema</span>
+          <p className="mt-2 text-2xl font-black text-purple-600 dark:text-purple-300">{kpiAdmins}</p>
+          <span className="text-[11px] text-[var(--text-muted)]">Acceso total al sistema</span>
         </div>
 
-        <div className="rounded-xl border border-amber-500/20 bg-amber-950/20 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-amber-300">Operadores</span>
-            <Shield className="h-4 w-4 text-amber-400" />
+        <div className="rounded-2xl border border-amber-500/30 bg-surface p-4 shadow-xs">
+          <div className="flex items-center justify-between text-xs text-amber-500 dark:text-amber-300">
+            <span className="font-mono uppercase">Operadores</span>
+            <Shield className="h-4 w-4 text-amber-500 dark:text-amber-300" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-amber-300">{kpiOperators}</p>
-          <span className="text-xs text-amber-500/80">Logística y bodega</span>
+          <p className="mt-2 text-2xl font-black text-amber-600 dark:text-amber-300">{kpiOperators}</p>
+          <span className="text-[11px] text-[var(--text-muted)]">Logística y bodega</span>
         </div>
 
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-emerald-300">Clientes</span>
-            <UserCheck className="h-4 w-4 text-emerald-400" />
+        <div className="rounded-2xl border border-emerald-500/30 bg-surface p-4 shadow-xs">
+          <div className="flex items-center justify-between text-xs text-emerald-500 dark:text-emerald-300">
+            <span className="font-mono uppercase">Clientes</span>
+            <UserCheck className="h-4 w-4 text-emerald-500 dark:text-emerald-300" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-emerald-300">{kpiClients}</p>
-          <span className="text-xs text-emerald-500/80">Compradores B2C</span>
+          <p className="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-300">{kpiClients}</p>
+          <span className="text-[11px] text-[var(--text-muted)]">Compradores B2C</span>
         </div>
 
-        <div className="rounded-xl border border-crimson-600/20 bg-crimson-950/20 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-red-300">Inactivos</span>
-            <UserX className="h-4 w-4 text-crimson-400" />
+        <div className="rounded-2xl border border-crimson-600/30 bg-surface p-4 shadow-xs">
+          <div className="flex items-center justify-between text-xs text-red-500 dark:text-red-300">
+            <span className="font-mono uppercase">Inactivos</span>
+            <UserX className="h-4 w-4 text-crimson-600" />
           </div>
-          <p className="mt-2 text-2xl font-bold text-red-300">{kpiInactive}</p>
-          <span className="text-xs text-red-500/80">Bloqueados temporalmente</span>
+          <p className="mt-2 text-2xl font-black text-red-500 dark:text-red-300">{kpiInactive}</p>
+          <span className="text-[11px] text-[var(--text-muted)]">Bloqueados temporalmente</span>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border-subtle)] bg-surface p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 flex-1 max-w-md">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-[var(--text-muted)]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar por nombre o correo..."
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-canvas pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-hidden"
             />
           </div>
           <button
             type="submit"
-            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700"
+            className="rounded-xl border border-[var(--border-strong)] bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-primary"
           >
             Buscar
           </button>
@@ -392,7 +386,7 @@ export function AdminUsersPage() {
               setRoleFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-purple-500"
+            className="rounded-xl border border-[var(--border-subtle)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
           >
             <option value="ALL">Todos los Roles</option>
             <option value="ADMINISTRATOR">Solo Administradores</option>
@@ -406,7 +400,7 @@ export function AdminUsersPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-purple-500"
+            className="rounded-xl border border-[var(--border-subtle)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
           >
             <option value="ALL">Todos los Estados</option>
             <option value="ACTIVE">Activos</option>
@@ -416,9 +410,9 @@ export function AdminUsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="responsive-table-wrapper rounded-xl border border-slate-800 bg-slate-900/40">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="border-b border-slate-800 bg-slate-900/80 text-xs uppercase tracking-wider text-slate-400">
+      <div className="responsive-table-wrapper rounded-2xl border border-[var(--border-subtle)] bg-surface shadow-xs">
+        <table className="w-full text-left text-xs text-[var(--text-secondary)]">
+          <thead className="border-b border-[var(--border-subtle)] bg-surface font-mono text-[11px] uppercase text-[var(--text-muted)]">
             <tr>
               <th scope="col" className="px-4 py-3.5 font-semibold">
                 Usuario / Correo
@@ -440,18 +434,18 @@ export function AdminUsersPage() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60 font-sans">
+          <tbody className="divide-y divide-[var(--border-subtle)] font-sans">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
-                  <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-purple-400" />
+                <td colSpan={6} className="px-4 py-12 text-center text-[var(--text-muted)]">
+                  <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-primary" />
                   Cargando directorio de usuarios en tiempo real...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
-                  <Users className="mx-auto mb-2 h-8 w-8 text-slate-600" />
+                <td colSpan={6} className="px-4 py-12 text-center text-[var(--text-muted)]">
+                  <Users className="mx-auto mb-2 h-8 w-8 text-[var(--text-muted)]" />
                   No se encontraron usuarios registrados con los filtros aplicados.
                 </td>
               </tr>
@@ -461,35 +455,35 @@ export function AdminUsersPage() {
                 return (
                   <tr
                     key={u.IDUser}
-                    className="transition-colors hover:bg-slate-800/40"
+                    className="transition-colors hover:bg-elevated/40"
                   >
                     <td className="px-4 py-3.5">
-                      <div className="font-semibold text-white">{u.FullName}</div>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <Mail className="h-3 w-3 text-slate-500" />
+                      <div className="font-semibold text-[var(--text-primary)]">{u.FullName}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                        <Mail className="h-3 w-3 text-[var(--text-muted)]" />
                         {u.Email}
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${roleMeta.badgeClass}`}
+                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 font-mono text-[11px] font-semibold ${roleMeta.badgeClass}`}
                       >
                         {roleMeta.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-300">
+                    <td className="px-4 py-3.5 text-xs text-[var(--text-secondary)]">
                       {u.PhoneNumber ? (
                         <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-slate-500" />
+                          <Phone className="h-3 w-3 text-[var(--text-muted)]" />
                           <span className="font-mono">{u.PhoneNumber}</span>
                         </div>
                       ) : (
-                        <span className="text-slate-600">No registrado</span>
+                        <span className="text-[var(--text-muted)]">No registrado</span>
                       )}
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ${
                           u.IsActive
                             ? 'border border-emerald-500/40 bg-emerald-950/80 text-emerald-300'
                             : 'border border-crimson-600/40 bg-crimson-950/80 text-red-300'
@@ -498,7 +492,7 @@ export function AdminUsersPage() {
                         {u.IsActive ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-400">
+                    <td className="px-4 py-3.5 text-xs text-[var(--text-muted)]">
                       {new Date(u.CreatedAt).toLocaleDateString('es-GT', {
                         year: 'numeric',
                         month: 'short',
@@ -514,7 +508,7 @@ export function AdminUsersPage() {
                             setNewRoleCode(u.RoleCode as any);
                             setRoleError(null);
                           }}
-                          className="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:bg-slate-700"
+                          className="rounded-lg border border-[var(--border-strong)] bg-surface px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] hover:border-primary"
                         >
                           Rol
                         </button>
@@ -526,10 +520,10 @@ export function AdminUsersPage() {
                             setStatusReason('');
                             setStatusActionError(null);
                           }}
-                          className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
+                          className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
                             u.IsActive
-                              ? 'border-crimson-600/40 bg-crimson-950/50 text-red-300 hover:bg-crimson-900/60'
-                              : 'border-emerald-500/40 bg-emerald-950/50 text-emerald-300 hover:bg-emerald-900/60'
+                              ? 'border-crimson-600/40 bg-crimson-950/40 text-red-300 hover:bg-crimson-900/60'
+                              : 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60'
                           }`}
                         >
                           {u.IsActive ? 'Desactivar' : 'Activar'}
@@ -546,8 +540,8 @@ export function AdminUsersPage() {
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-slate-800 pt-4">
-          <span className="text-xs text-slate-400">
+        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4">
+          <span className="text-xs text-[var(--text-muted)]">
             Página {page} de {totalPages} ({total} usuarios)
           </span>
           <div className="flex items-center gap-2">
@@ -555,7 +549,7 @@ export function AdminUsersPage() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-strong)] bg-surface px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
               Anterior
@@ -564,7 +558,7 @@ export function AdminUsersPage() {
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-strong)] bg-surface px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-40"
             >
               Siguiente
               <ChevronRight className="h-4 w-4" />
@@ -583,14 +577,14 @@ export function AdminUsersPage() {
         >
           <form onSubmit={handleCreateSubmit} className="space-y-4">
             {createError && (
-              <div className="flex items-center gap-2 rounded-lg border border-crimson-600/40 bg-crimson-950/30 p-3 text-xs text-red-300">
-                <AlertCircle className="h-4 w-4 shrink-0 text-crimson-400" />
+              <div className="flex items-center gap-2 rounded-xl border border-crimson-600/40 bg-surface p-3 text-xs text-red-400">
+                <AlertCircle className="h-4 w-4 shrink-0 text-crimson-600" />
                 <span>{createError}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-300">
+              <label className="block text-xs font-semibold text-[var(--text-primary)]">
                 Nombre Completo:
               </label>
               <input
@@ -599,12 +593,12 @@ export function AdminUsersPage() {
                 value={createFullName}
                 onChange={(e) => setCreateFullName(e.target.value)}
                 placeholder="Ej. Roberto Menéndez"
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300">
+              <label className="block text-xs font-semibold text-[var(--text-primary)]">
                 Correo Electrónico:
               </label>
               <input
@@ -613,12 +607,12 @@ export function AdminUsersPage() {
                 value={createEmail}
                 onChange={(e) => setCreateEmail(e.target.value)}
                 placeholder="usuario@shopcart.gt"
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300">
+              <label className="block text-xs font-semibold text-[var(--text-primary)]">
                 Contraseña Inicial:
               </label>
               <input
@@ -627,22 +621,22 @@ export function AdminUsersPage() {
                 value={createPassword}
                 onChange={(e) => setCreatePassword(e.target.value)}
                 placeholder="Mínimo 8 caracteres, 1 mayúscula, 1 número y 1 especial"
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
               />
-              <p className="mt-1 text-[11px] text-slate-500">
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
                 Requisitos: Mín. 8 caracteres, al menos 1 letra mayúscula, 1 dígito numérico y 1 símbolo especial.
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-slate-300">
+                <label className="block text-xs font-semibold text-[var(--text-primary)]">
                   Rol de Sistema:
                 </label>
                 <select
                   value={createRoleCode}
                   onChange={(e) => setCreateRoleCode(e.target.value as any)}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
                 >
                   <option value="OPERATOR">OPERATOR (Operador Logístico)</option>
                   <option value="ADMINISTRATOR">ADMINISTRATOR (Control Total)</option>
@@ -651,7 +645,7 @@ export function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300">
+                <label className="block text-xs font-semibold text-[var(--text-primary)]">
                   Teléfono (Código y 8 dígitos):
                 </label>
                 <div className="mt-1">
@@ -663,18 +657,18 @@ export function AdminUsersPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
               <button
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700"
+                className="rounded-xl border border-[var(--border-strong)] bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmittingCreate}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500 bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-purple-500 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-purple-700 disabled:opacity-50"
               >
                 {isSubmittingCreate ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -698,20 +692,20 @@ export function AdminUsersPage() {
         >
           <form onSubmit={handleRoleSubmit} className="space-y-4">
             {roleError && (
-              <div className="flex items-center gap-2 rounded-lg border border-crimson-600/40 bg-crimson-950/30 p-3 text-xs text-red-300">
-                <AlertCircle className="h-4 w-4 shrink-0 text-crimson-400" />
+              <div className="flex items-center gap-2 rounded-xl border border-crimson-600/40 bg-surface p-3 text-xs text-red-400">
+                <AlertCircle className="h-4 w-4 shrink-0 text-crimson-600" />
                 <span>{roleError}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-300">
+              <label className="block text-xs font-semibold text-[var(--text-primary)]">
                 Seleccione el nuevo rol a asignar:
               </label>
               <select
                 value={newRoleCode}
                 onChange={(e) => setNewRoleCode(e.target.value as any)}
-                className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] focus:border-primary focus:outline-hidden"
               >
                 <option value="OPERATOR">OPERATOR (Operador Logístico / Bodega)</option>
                 <option value="ADMINISTRATOR">ADMINISTRATOR (Administrador Global)</option>
@@ -719,28 +713,28 @@ export function AdminUsersPage() {
               </select>
             </div>
 
-            <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-xs text-amber-300">
+            <div className="rounded-xl border border-amber-500/30 bg-surface p-3 text-xs text-amber-400">
               <div className="flex items-center gap-1.5 font-semibold">
                 <ShieldAlert className="h-4 w-4 text-amber-400" />
                 Cambio de Privilegios de Seguridad
               </div>
-              <p className="mt-1 text-slate-400">
+              <p className="mt-1 text-[var(--text-secondary)]">
                 El cambio de rol entra en vigencia de inmediato en la base de datos y quedará registrado en la bitácora de auditoría.
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
               <button
                 type="button"
                 onClick={() => setSelectedUserForRole(null)}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700"
+                className="rounded-xl border border-[var(--border-strong)] bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmittingRole}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500 bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-purple-500 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-purple-700 disabled:opacity-50"
               >
                 {isSubmittingRole ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -768,19 +762,19 @@ export function AdminUsersPage() {
         >
           <form onSubmit={handleStatusSubmit} className="space-y-4">
             {statusActionError && (
-              <div className="flex items-center gap-2 rounded-lg border border-crimson-600/40 bg-crimson-950/30 p-3 text-xs text-red-300">
-                <AlertCircle className="h-4 w-4 shrink-0 text-crimson-400" />
+              <div className="flex items-center gap-2 rounded-xl border border-crimson-600/40 bg-surface p-3 text-xs text-red-400">
+                <AlertCircle className="h-4 w-4 shrink-0 text-crimson-600" />
                 <span>{statusActionError}</span>
               </div>
             )}
 
             {selectedUserForStatus.IsActive ? (
               <div className="space-y-3">
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-[var(--text-secondary)]">
                   Al desactivar la cuenta, el usuario no podrá iniciar sesión en la plataforma ni realizar compras u operaciones.
                 </p>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-primary)]">
                     Motivo de Desactivación (Obligatorio, mín. 3 caracteres):
                   </label>
                   <textarea
@@ -789,32 +783,32 @@ export function AdminUsersPage() {
                     value={statusReason}
                     onChange={(e) => setStatusReason(e.target.value)}
                     placeholder="Ej. Sospecha de actividad inusual, solicitud formal de baja, etc."
-                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white focus:border-crimson-500 focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-[var(--border-strong)] bg-canvas px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-crimson-500 focus:outline-hidden"
                   />
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-[var(--text-secondary)]">
                 ¿Está seguro de que desea reactivar la cuenta de{' '}
-                <strong className="text-white">{selectedUserForStatus.FullName}</strong>? El usuario recuperará de inmediato sus privilegios de acceso.
+                <strong className="text-[var(--text-primary)]">{selectedUserForStatus.FullName}</strong>? El usuario recuperará de inmediato sus privilegios de acceso.
               </p>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
               <button
                 type="button"
                 onClick={() => setSelectedUserForStatus(null)}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700"
+                className="rounded-xl border border-[var(--border-strong)] bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmittingStatus}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-semibold text-white shadow transition disabled:opacity-50 ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 ${
                   selectedUserForStatus.IsActive
-                    ? 'border-crimson-600 bg-crimson-600 hover:bg-crimson-500'
-                    : 'border-emerald-600 bg-emerald-600 hover:bg-emerald-500'
+                    ? 'bg-crimson-600 hover:bg-crimson-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
                 {isSubmittingStatus ? (

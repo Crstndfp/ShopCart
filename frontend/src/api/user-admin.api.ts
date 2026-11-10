@@ -30,7 +30,22 @@ export const userAdminApi = {
     }
 
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiRequest<UserListResponse>(`/api/v1/users${query}`);
+    const response = await apiRequest<{
+      statusCode: number;
+      pagination?: { page: number; limit: number; total: number; totalPages: number };
+      data?: UserRecord[];
+      items?: UserRecord[];
+      total?: number;
+    }>(`/api/v1/users${query}`);
+
+    const items = response.data ?? response.items ?? [];
+    const total = response.pagination?.total ?? response.total ?? items.length;
+
+    return {
+      statusCode: response.statusCode ?? 200,
+      items,
+      total,
+    };
   },
 
   // Get user by ID

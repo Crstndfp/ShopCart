@@ -39,6 +39,7 @@ export function AdminCouponsPage() {
   // Modal State (Create / Edit)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<CouponRecord | null>(null);
+  const [couponToDeactivate, setCouponToDeactivate] = useState<{ id: number; code: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{
     type: 'success' | 'error';
@@ -240,24 +241,20 @@ export function AdminCouponsPage() {
   };
 
   // Deactivate Coupon Handler
-  const handleDeactivate = async (idCoupon: number, couponCode: string) => {
-    if (
-      !window.confirm(
-        `¿Deseas desactivar el cupón '${couponCode}'? Esta acción quedará registrada en la bitácora de auditoría.`
-      )
-    ) {
-      return;
-    }
+  const handleConfirmDeactivate = async () => {
+    if (!couponToDeactivate) return;
 
     try {
-      await couponApi.deactivateCoupon(idCoupon);
+      await couponApi.deactivateCoupon(couponToDeactivate.id);
+      setCouponToDeactivate(null);
       void fetchCoupons();
     } catch (err) {
       const msg =
         err instanceof HttpError
           ? err.message
           : 'Error al desactivar el cupón en SQL Server.';
-      alert(msg);
+      setErrorMessage(msg);
+      setCouponToDeactivate(null);
     }
   };
 
@@ -527,7 +524,7 @@ export function AdminCouponsPage() {
                         {coupon.IsActive && (
                           <button
                             type="button"
-                            onClick={() => void handleDeactivate(coupon.IDCoupon, coupon.Code)}
+                            onClick={() => setCouponToDeactivate({ id: coupon.IDCoupon, code: coupon.Code })}
                             title="Desactivar cupón"
                             className="rounded-lg border border-[var(--border-strong)] bg-surface p-1.5 text-[var(--text-secondary)] transition hover:border-crimson-600 hover:text-crimson-600"
                           >
@@ -821,6 +818,47 @@ export function AdminCouponsPage() {
             </button>
           </div>
         </form>
+      </ModalDialog>
+
+      {/* Confirmation Modal for Coupon Deactivation */}
+      <ModalDialog
+        isOpen={couponToDeactivate !== null}
+        onClose={() => setCouponToDeactivate(null)}
+        title="Confirmar Desactivación de Cupón"
+        subtitle="Esta acción retirará el cupón de promociones activas preservando el historial de órdenes."
+      >
+        {couponToDeactivate && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-crimson-600/30 bg-canvas p-4 text-xs text-[var(--text-secondary)]">
+              <p className="font-semibold text-[var(--text-primary)]">
+                ¿Confirmas la baja lógica del cupón promocional?
+              </p>
+              <p className="mt-1 font-mono text-base font-bold text-primary">
+                {couponToDeactivate.code}
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                Los pedidos y carritos existentes preservarán su registro histórico en la bitácora de auditoría.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">
+              <button
+                type="button"
+                onClick={() => setCouponToDeactivate(null)}
+                className="rounded-xl border border-[var(--border-strong)] bg-surface px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmDeactivate()}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-crimson-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-crimson-700"
+              >
+                Confirmar Desactivación
+              </button>
+            </div>
+          </div>
+        )}
       </ModalDialog>
     </div>
   );
